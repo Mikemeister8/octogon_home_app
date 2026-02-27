@@ -176,7 +176,7 @@ export const Home = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm text-foreground">
-                                        <span className="font-bold">{user.name}</span> ha completado <span className="text-primary font-medium">{task.title}</span>
+                                        <span className="font-bold">{user.name}</span> ha completado <span className="text-primary font-medium">{task.name}</span>
                                     </p>
                                     <p className="text-xs text-text-dim">{new Date(c.timestamp).toLocaleString()}</p>
                                 </div>

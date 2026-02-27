@@ -35,9 +35,11 @@ export interface Reminder {
     title: string;
     description?: string;
     date: string; // ISO Date String
-    time?: string; // HH:mm format
+    startTime: string; // HH:mm format
+    endTime?: string;
     location?: string;
     participants: string[]; // user IDs
+    isCompleted?: boolean;
 }
 
 export interface ShoppingConcept {
