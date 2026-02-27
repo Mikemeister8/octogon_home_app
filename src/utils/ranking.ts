@@ -7,9 +7,9 @@ export interface UserStats {
 
 export function calculateRankings(
     users: User[],
-    tasks: Task[],
+    _tasks: Task[], // No need to find if total points is stored in completion
     completions: TaskCompletion[],
-    filterMoth?: number, // 0-11
+    filterMonth?: number, // 0-11
     filterYear?: number
 ): UserStats[] {
     const stats: Record<string, number> = {};
@@ -18,18 +18,15 @@ export function calculateRankings(
     });
 
     completions.forEach((completion) => {
-        const task = tasks.find((t) => t.id === completion.taskId);
-        if (!task) return;
-
-        if (filterMoth !== undefined && filterYear !== undefined) {
-            const date = new Date(completion.timestamp);
-            if (date.getMonth() !== filterMoth || date.getFullYear() !== filterYear) {
+        if (filterMonth !== undefined && filterYear !== undefined) {
+            const date = new Date(completion.completed_at);
+            if (date.getMonth() !== filterMonth || date.getFullYear() !== filterYear) {
                 return;
             }
         }
 
-        if (stats[completion.userId] !== undefined) {
-            stats[completion.userId] += task.points;
+        if (stats[completion.user_id] !== undefined) {
+            stats[completion.user_id] += (completion.points_earned || 0);
         }
     });
 

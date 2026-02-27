@@ -1,187 +1,201 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Home as HomeIcon, CheckSquare, Trophy, Settings as SettingsIcon, ShoppingCart, Utensils, CalendarDays, Star, LayoutDashboard } from 'lucide-react';
-import { AppProvider, useAppContext } from './store/AppContext';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2 } from 'lucide-react';
+import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
-import { Settings as SettingsPage } from './pages/Settings';
-import { Home } from './pages/Home';
 import { Competition } from './pages/Competition';
-import { Shopping } from './pages/Shopping';
 import { Reminders } from './pages/Reminders';
-import { Meals } from './pages/Meals';
+import { Shopping } from './pages/Shopping';
+import { Settings } from './pages/Settings';
 import { Dashboards } from './pages/Dashboards';
-import { JoinHousehold } from './pages/JoinHousehold';
 import { Auth } from './pages/Auth';
+import { JoinHousehold } from './pages/JoinHousehold';
+import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
+import { useEffect } from 'react';
 
 const Sidebar = () => {
-  const { homeSettings, logout } = useAppContext();
-  const IconComponent = getIcon(homeSettings.logo);
+  const { currentUser, homeSettings, logout } = useAppContext();
+  const location = useLocation();
 
-  const links = [
-    { to: "/", icon: <HomeIcon />, label: "Home" },
-    { to: "/tasks", icon: <CheckSquare />, label: "Tareas" },
-    { to: "/competition", icon: <Trophy />, label: "Ranking" },
-    { to: "/shopping", icon: <ShoppingCart />, label: "Compra" },
-    {
-      to: "/meals",
-      icon: <Utensils />,
-      label: "Menú",
-      subItems: [
-        { to: "/meals", label: "Planificador", icon: <CalendarDays className="w-3 h-3" /> },
-        { to: "/meals?filter=favorites", label: "Favoritos", icon: <Star className="w-3 h-3" /> }
-      ]
-    },
-    { to: "/reminders", icon: <CalendarDays />, label: "Agenda" },
-    { to: "/dashboards", icon: <LayoutDashboard />, label: "Estadísticas" },
-    { to: "/settings", icon: <SettingsIcon />, label: "Ajustes" },
+  if (!currentUser) return null;
+
+  const HomeIconComponent = getIcon(homeSettings?.logo || 'Home');
+
+  const navItems = [
+    { path: '/', icon: Home, label: 'Inicio' },
+    { path: '/tasks', icon: ListTodo, label: 'Tareas' },
+    { path: '/competition', icon: Trophy, label: 'Ranking' },
+    { path: '/reminders', icon: Calendar, label: 'Agenda' },
+    { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
+    { path: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' },
+    { path: '/settings', icon: SettingsIcon, label: 'Ajustes' },
   ];
 
   return (
-    <>
-      <div className="hidden md:flex flex-col w-64 bg-panel border-r border-foreground/10 h-screen sticky top-0 overflow-y-auto z-40">
-        <div className="p-6 flex flex-col gap-2">
-          <div className="flex items-center gap-3 mb-1">
-            <img src="/logo.png" alt="Octogon" className="h-8 object-contain" />
-            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-text-dim">Octogon Home</span>
-          </div>
-          <div className="flex items-center gap-3 mt-2">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <IconComponent className="w-8 h-8" style={{ color: homeSettings.themeColor }} />
-            </div>
-            <h1 className="font-extrabold text-xl tracking-tight leading-tight line-clamp-2" style={{ color: homeSettings.themeColor }}>
-              {homeSettings.name}
-            </h1>
-          </div>
+    <aside className="fixed left-0 top-0 h-full w-72 bg-panel border-r border-foreground/10 z-40 hidden lg:flex flex-col shadow-2xl">
+      <div className="p-8 border-b border-foreground/10 flex flex-col items-center gap-6 bg-foreground/5 py-12 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+        <div className="p-4 bg-panel rounded-[2rem] shadow-2xl border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 relative z-10">
+          <HomeIconComponent className="w-10 h-10" style={{ color: homeSettings?.themeColor || '#00FF88' }} />
         </div>
-
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {links.map(link => (
-            <div key={link.to} className="space-y-1">
-              <NavLink
-                to={link.to}
-                end={link.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                    ? 'bg-primary text-white font-medium shadow-lg'
-                    : 'text-text-dim hover:text-foreground hover:bg-foreground/5'
-                  }`
-                }
-              >
-                <div className="w-5 h-5">{link.icon}</div>
-                <span className="flex-1 font-bold">{link.label}</span>
-              </NavLink>
-
-              {link.subItems && (
-                <div className="pl-9 space-y-1 mt-1 border-l border-foreground/5 ml-6">
-                  {link.subItems.map(sub => (
-                    <NavLink
-                      key={sub.to}
-                      to={sub.to}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${isActive
-                          ? 'text-primary font-bold bg-primary/10'
-                          : 'text-text-dim hover:text-foreground hover:bg-foreground/5'
-                        }`
-                      }
-                    >
-                      {sub.icon}
-                      {sub.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </nav>
-
-        <div className="p-4 mt-auto border-t border-foreground/10">
-          <button onClick={logout} className="w-full py-3 bg-foreground/5 hover:bg-red-500/10 text-text-dim hover:text-red-500 rounded-xl transition-all text-sm font-bold flex items-center justify-center gap-2">
-            Salir de Hogar
-          </button>
+        <div className="text-center relative z-10 space-y-1">
+          <h2 className="text-2xl font-black tracking-tight" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim opacity-50">Control Central</span>
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-panel border-t border-foreground/10 shadow-2xl flex items-center justify-around px-1 pt-3 pb-6 z-50">
-        {[
-          { to: "/", icon: <HomeIcon />, label: "Inicio" },
-          { to: "/tasks", icon: <CheckSquare />, label: "Tareas" },
-          { to: "/shopping", icon: <ShoppingCart />, label: "Lista" },
-          { to: "/meals", icon: <Utensils />, label: "Cena" },
-          { to: "/settings", icon: <SettingsIcon />, label: "App" },
-        ].map(link => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/'}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1.5 px-3 py-1 transition-all ${isActive
-                ? 'text-primary'
-                : 'text-text-dim hover:text-foreground'}`
-            }
+      <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`flex items-center justify-between p-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest group ${location.pathname === item.path
+              ? 'bg-primary text-white shadow-xl shadow-primary/20 translate-x-1'
+              : 'text-text-dim hover:bg-foreground/5 hover:text-foreground'
+              }`}
           >
-            <div className={`p-2.5 rounded-2xl transition-all ${link.to === '/' ? 'bg-primary/5' : ''}`}>
-              <div className="w-6 h-6">{link.icon}</div>
+            <div className="flex items-center gap-4">
+              <item.icon className={`w-5 h-5 ${location.pathname === item.path ? 'text-white' : 'group-hover:text-primary transition-colors'}`} />
+              <span>{item.label}</span>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{link.label}</span>
-          </NavLink>
+            {location.pathname === item.path && <ChevronRight className="w-4 h-4 animate-in slide-in-from-left-2" />}
+          </Link>
         ))}
+      </nav>
+
+      <div className="p-6 border-t border-foreground/10 bg-foreground/5">
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-panel border border-foreground/10 mb-5 shadow-lg group">
+          <div className="w-12 h-12 rounded-[1rem] flex items-center justify-center font-black text-lg text-white shadow-xl rotate-3 group-hover:rotate-0 transition-transform" style={{ backgroundColor: currentUser.color_hex }}>
+            {currentUser.full_name[0]}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-foreground truncate uppercase tracking-tight">{currentUser.full_name}</p>
+            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">Online Hub</p>
+          </div>
+        </div>
+
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all font-black text-xs uppercase tracking-widest group"
+        >
+          <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          Salir
+        </button>
       </div>
-    </>
+    </aside>
+  );
+};
+
+const MobileNav = () => {
+  const { currentUser } = useAppContext();
+  const location = useLocation();
+
+  if (!currentUser) return null;
+
+  const navItems = [
+    { path: '/', icon: Home, label: 'Inicio' },
+    { path: '/tasks', icon: ListTodo, label: 'Tareas' },
+    { path: '/competition', icon: Trophy, label: 'Podio' },
+    { path: '/reminders', icon: Calendar, label: 'Agenda' },
+    { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-panel/90 backdrop-blur-3xl border-t border-foreground/10 lg:hidden z-50 px-2 pb-safe-area shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+      <div className="flex justify-around items-end h-24 max-w-lg mx-auto">
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`flex flex-col items-center justify-center w-full py-4 transition-all ${location.pathname === item.path ? 'text-primary' : 'text-text-dim'
+              }`}
+          >
+            <div className={`p-2.5 rounded-2xl transition-all duration-300 ${location.pathname === item.path ? 'bg-primary/20 scale-110 mb-1' : 'mb-0.5'}`}>
+              <item.icon className={`w-7 h-7 ${location.pathname === item.path ? 'text-primary' : 'text-text-dim'}`} />
+            </div>
+            <span className={`text-[9px] font-black tracking-widest uppercase truncate max-w-[60px] transition-all ${location.pathname === item.path ? 'opacity-100' : 'opacity-40'}`}>
+              {item.label}
+            </span>
+            {location.pathname === item.path && (
+              <div className="h-1.5 w-1.5 bg-primary rounded-full mt-1.5 animate-in zoom-in" />
+            )}
+          </Link>
+        ))}
+        <Link
+          to="/settings"
+          className={`flex flex-col items-center justify-center w-full py-4 transition-all opacity-40`}
+        >
+          <div className={`p-2.5 rounded-2xl transition-all duration-300 ${location.pathname === '/settings' ? 'bg-primary/20 scale-110 mb-1' : 'mb-0.5'}`}>
+            <SettingsIcon className={`w-7 h-7 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim'}`} />
+          </div>
+          <span className={`text-[9px] font-black tracking-widest uppercase truncate max-w-[60px] transition-all`}>
+            Más
+          </span>
+        </Link>
+      </div>
+    </nav>
   );
 };
 
 const AppContent = () => {
-  const { currentUser } = useAppContext();
-  const theme = currentUser?.theme || 'cyber';
+  const { currentUser, loading } = useAppContext();
+  const location = useLocation();
 
   useEffect(() => {
-    const html = document.documentElement;
-    const themes = ['theme-cyber', 'theme-light', 'theme-octogon'];
-    themes.forEach(t => html.classList.remove(t));
-    html.classList.add(`theme-${theme}`);
-    document.body.className = `theme-${theme}`;
-  }, [theme]);
+    if (currentUser) {
+      document.documentElement.classList.remove('theme-cyber', 'theme-light', 'theme-octogon');
+      document.documentElement.classList.add(`theme-${currentUser.theme || 'cyber'}`);
+    }
+  }, [currentUser]);
 
-  if (!currentUser) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 space-y-8 animate-in fade-in duration-500">
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
+          <div className="w-24 h-24 bg-panel border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center relative z-10 shadow-2xl">
+            <img src="/logo.png" alt="Octogon" className="w-12 h-12 object-contain" />
+          </div>
+        </div>
+        <div className="text-center space-y-3">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
+          <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
+          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Autenticando conexión en la nube...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser && !location.pathname.startsWith('/join')) {
     return (
       <Routes>
         <Route path="/auth" element={<Auth />} />
-        <Route path="/join/:inviteId" element={<JoinHousehold />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
+    <div className="flex min-h-screen bg-background text-foreground pb-24 lg:pb-0 lg:pl-72 selection:bg-primary selection:text-white">
       <Sidebar />
-      <main className="flex-1 relative pb-24 md:pb-0 overflow-y-auto w-full">
+      <main className="flex-1 w-full max-w-7xl mx-auto">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/competition" element={<Competition />} />
-          <Route path="/shopping" element={<Shopping />} />
-          <Route path="/meals" element={<Meals />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/shopping" element={<Shopping />} />
           <Route path="/dashboards" element={<Dashboards />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/auth" element={<Navigate to="/" replace />} />
           <Route path="/join/:inviteId" element={<JoinHousehold />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <MobileNav />
     </div>
   );
 };
 
-function App() {
-  return (
-    <AppProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </AppProvider>
-  );
+export default function App() {
+  return <AppContent />;
 }
-
-export default App;
