@@ -13,10 +13,8 @@ export const Shopping = () => {
     const [inputText, setInputText] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
 
-    // Active items: those that haven't been bought yet.
     const activeItems = shoppingItems.filter(item => !item.boughtBy);
 
-    // Auto-suggest logic
     const suggestions = useMemo(() => {
         if (!inputText.trim()) return [];
         const lowerInput = inputText.toLowerCase();
@@ -65,7 +63,6 @@ export const Shopping = () => {
         });
     };
 
-    // Calculate metrics: Who goes shopping most? (Counting bought items per user)
     const boughtItems = shoppingItems.filter(item => item.boughtBy);
     const metricsMap: Record<string, number> = {};
     users.forEach(u => metricsMap[u.id] = 0);
@@ -76,23 +73,20 @@ export const Shopping = () => {
     });
 
     const metricsArr = users.map(u => ({ user: u, count: metricsMap[u.id] })).sort((a, b) => b.count - a.count);
-    const maxCount = Math.max(...metricsArr.map(m => m.count), 1); // prevent division by zero
+    const maxCount = Math.max(...metricsArr.map(m => m.count), 1);
 
     return (
-        <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <header>
+        <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <header className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-emerald-600">
                     Lista de la Compra
                 </h1>
-                <p className="text-gray-400 mt-1">Anota lo que hace falta. Compra inteligentemente.</p>
+                <p className="text-text-dim mt-1">Anota lo que hace falta. Compra inteligentemente.</p>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Main List Column */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Add Input */}
-                    <div className="relative">
+                    <div className="relative group">
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1">
                                 <input
@@ -103,19 +97,18 @@ export const Shopping = () => {
                                         setShowSuggestions(true);
                                     }}
                                     onFocus={() => setShowSuggestions(true)}
-                                    // Make timeout to allow click on suggestion
                                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="¿Qué necesitamos comprar? Ej. Tortilla..."
-                                    className="w-full bg-panel border-2 border-white/5 focus:border-teal-500 rounded-xl px-4 py-3 text-white outline-none transition-colors"
+                                    className="w-full bg-foreground/5 border-2 border-foreground/10 focus:border-teal-500 rounded-xl px-4 py-3 text-foreground outline-none transition-all placeholder:text-text-dim/50"
                                 />
                                 {suggestions.length > 0 && showSuggestions && (
-                                    <div className="absolute z-10 w-full mt-2 bg-panel border border-white/10 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                                    <div className="absolute z-10 w-full mt-2 bg-panel border border-foreground/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                                         {suggestions.map(s => (
                                             <div
                                                 key={s.id}
                                                 onClick={() => handleAddItem(s.name)}
-                                                className="px-4 py-3 hover:bg-white/5 cursor-pointer text-white flex items-center gap-2 transition-colors border-b border-white/5 last:border-0"
+                                                className="px-4 py-3 hover:bg-foreground/5 cursor-pointer text-foreground flex items-center gap-2 transition-colors border-b border-foreground/10 last:border-0 font-medium"
                                             >
                                                 <TrendingUp className="w-4 h-4 text-teal-500" />
                                                 {s.name}
@@ -126,45 +119,44 @@ export const Shopping = () => {
                             </div>
                             <button
                                 onClick={() => handleAddItem(inputText)}
-                                className="bg-teal-600 hover:bg-teal-500 text-white p-3 rounded-xl transition-colors shadow-lg shadow-teal-900/20 shrink-0"
+                                className="bg-teal-600 hover:bg-teal-500 text-white p-3.5 rounded-xl transition-all shadow-lg shadow-teal-500/20 active:scale-95 shrink-0"
                             >
                                 <Plus className="w-6 h-6" />
                             </button>
                         </div>
                     </div>
 
-                    {/* Pending Items List */}
-                    <div className="bg-panel border border-white/5 rounded-2xl overflow-hidden">
-                        <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center gap-2">
+                    <div className="bg-panel border border-foreground/10 rounded-2xl overflow-hidden shadow-xl">
+                        <div className="px-6 py-4 border-b border-foreground/10 bg-foreground/5 flex items-center gap-2">
                             <ShoppingCart className="w-5 h-5 text-teal-400" />
-                            <h3 className="font-semibold text-white">Por Comprar ({activeItems.length})</h3>
+                            <h3 className="font-bold text-foreground">Por Comprar ({activeItems.length})</h3>
                         </div>
 
                         {activeItems.length > 0 ? (
-                            <div className="divide-y divide-white/5">
+                            <div className="divide-y divide-foreground/10">
                                 {activeItems.map(item => {
                                     const u = users.find(x => x.id === item.addedBy);
                                     return (
-                                        <div key={item.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-white/5 transition-colors group">
+                                        <div key={item.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-foreground/5 transition-colors group">
                                             <div className="flex items-center gap-4">
                                                 <button
                                                     onClick={() => handleMarkAsBought(item)}
-                                                    className="w-6 h-6 rounded-full border-2 border-gray-500 flex items-center justify-center group-hover:border-teal-400 transition-colors"
+                                                    className="w-6 h-6 rounded-full border-2 border-foreground/20 flex items-center justify-center group-hover:border-teal-500 transition-colors shadow-sm"
                                                 >
-                                                    <Check className="w-4 h-4 text-transparent group-hover:text-teal-400" />
+                                                    <Check className="w-4 h-4 text-transparent group-hover:text-teal-500" />
                                                 </button>
                                                 <div>
-                                                    <p className="font-medium text-white group-hover:text-teal-300 transition-colors">{item.name}</p>
+                                                    <p className="font-bold text-foreground group-hover:text-teal-500 transition-colors">{item.name}</p>
                                                     {u && (
-                                                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                            Añadido por <span className="font-semibold" style={{ color: u.color }}>{u.name}</span>
+                                                        <p className="text-[10px] text-text-dim flex items-center gap-1 mt-1 font-medium opacity-70">
+                                                            Añadido por <span style={{ color: u.color }}>{u.name}</span>
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => deleteShoppingItem(item.id)}
-                                                className="text-gray-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-all"
+                                                className="text-text-dim hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all active:scale-90"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -173,36 +165,35 @@ export const Shopping = () => {
                                 })}
                             </div>
                         ) : (
-                            <div className="p-12 pl-12 text-center flex flex-col items-center">
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                                    <Check className="w-8 h-8 text-teal-500/50" />
+                            <div className="p-16 text-center flex flex-col items-center">
+                                <div className="w-20 h-20 rounded-full bg-foreground/5 flex items-center justify-center mb-4 transition-transform hover:scale-110">
+                                    <Check className="w-10 h-10 text-teal-500/40" />
                                 </div>
-                                <p className="text-gray-400 text-lg">¡Todo comprado!</p>
-                                <p className="text-gray-500 mt-1">La lista está vacía.</p>
+                                <p className="text-foreground text-xl font-bold">¡Todo al día!</p>
+                                <p className="text-text-dim mt-1 italic">No hay items pendientes en la lista.</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Dashboard / Metrics Column */}
                 <div className="space-y-6">
-                    <div className="bg-panel border border-white/5 rounded-2xl overflow-hidden p-6">
+                    <div className="bg-panel border border-foreground/10 rounded-2xl overflow-hidden p-6 shadow-xl">
                         <div className="flex items-center gap-2 mb-6">
-                            <BarChart3 className="w-5 h-5 text-purple-400" />
-                            <h3 className="font-semibold text-white">¿Quién va más a la compra?</h3>
+                            <BarChart3 className="w-5 h-5 text-primary" />
+                            <h3 className="font-bold text-foreground">Actividad de Compra</h3>
                         </div>
 
                         {boughtItems.length > 0 ? (
                             <div className="space-y-5">
                                 {metricsArr.map((stat) => (
-                                    <div key={stat.user.id}>
-                                        <div className="flex justify-between items-center mb-1 text-sm">
-                                            <span className="font-medium text-white">{stat.user.name}</span>
-                                            <span className="text-gray-400 font-bold">{stat.count} <span className="text-xs font-normal">items</span></span>
+                                    <div key={stat.user.id} className="space-y-1">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="font-bold text-foreground">{stat.user.name}</span>
+                                            <span className="text-text-dim font-extrabold">{stat.count} <span className="text-[10px] font-normal uppercase tracking-wider">items</span></span>
                                         </div>
-                                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-2.5 bg-foreground/5 rounded-full overflow-hidden border border-foreground/5">
                                             <div
-                                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                                className="h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.1)]"
                                                 style={{
                                                     width: `${(stat.count / maxCount) * 100}%`,
                                                     backgroundColor: stat.user.color
@@ -213,14 +204,13 @@ export const Shopping = () => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-6">
-                                <AlertCircle className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                                <p className="text-gray-500 text-sm">Aún no hay compras registradas para mostrar métricas.</p>
+                            <div className="text-center py-8 bg-foreground/5 rounded-2xl border border-dashed border-foreground/10">
+                                <AlertCircle className="w-10 h-10 text-text-dim/30 mx-auto mb-2" />
+                                <p className="text-text-dim text-xs italic">Sin datos suficientes para mostrar métricas todavía.</p>
                             </div>
                         )}
                     </div>
                 </div>
-
             </div>
         </div>
     );
