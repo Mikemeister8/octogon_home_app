@@ -89,3 +89,16 @@ export interface WeeklyMenu {
         meal: MealBlock;
     }[];
 }
+
+export interface Household {
+    id: string;
+    settings: HomeSettings;
+    users: User[];
+    tasks: Task[];
+    completions: TaskCompletion[];
+    reminders: Reminder[];
+    shoppingConcepts: ShoppingConcept[];
+    shoppingItems: ShoppingItem[];
+    weeklyMenus: WeeklyMenu[];
+    tokenName: string;
+}

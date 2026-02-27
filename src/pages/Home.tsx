@@ -1,10 +1,11 @@
 import { useAppContext } from '../store/AppContext';
 import { calculateRankings } from '../utils/ranking';
-import { Award, Target, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, MapPin } from 'lucide-react';
+import { Award, Target, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, MapPin, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getIcon } from '../utils/icons';
 
 export const Home = () => {
-    const { users, tasks, completions, currentUser, tokenName, reminders } = useAppContext();
+    const { users, tasks, completions, currentUser, tokenName, reminders, homeSettings } = useAppContext();
 
     const today = new Date();
     const currentMonthIdx = today.getMonth();
@@ -18,6 +19,8 @@ export const Home = () => {
     const recentCompletions = [...completions]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5);
+
+    const HomeIconComponent = getIcon(homeSettings.logo);
 
     const PodioMini = ({ top1, top2 }: { top1?: any, top2?: any }) => (
         <div className="flex items-end justify-center gap-4 h-32 sm:h-40 my-6">
@@ -47,6 +50,32 @@ export const Home = () => {
 
     return (
         <div className="p-4 sm:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* NEW HEADER: App & Home Branding */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-4 py-2 bg-foreground/5 rounded-3xl border border-foreground/5">
+                <div className="flex items-center gap-4 group">
+                    <div className="p-2.5 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform duration-500">
+                        <img src="/logo.png" alt="Octogon" className="w-8 h-8 object-contain" />
+                    </div>
+                    <div>
+                        <h1 className="text-sm font-black uppercase tracking-[0.3em] bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">Octogon</h1>
+                        <p className="text-[10px] font-bold text-text-dim opacity-60 uppercase">The Home Hub</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 bg-panel px-6 py-3 rounded-[2rem] shadow-xl border border-foreground/10 group">
+                    <div className="p-2 rounded-xl bg-primary/10 group-hover:scale-110 transition-transform">
+                        <HomeIconComponent className="w-6 h-6" style={{ color: homeSettings.themeColor }} />
+                    </div>
+                    <div className="text-right">
+                        <h2 className="font-black text-lg tracking-tight leading-none" style={{ color: homeSettings.themeColor }}>{homeSettings.name}</h2>
+                        <span className="text-[10px] font-bold text-text-dim flex items-center justify-end gap-1 mt-1">
+                            <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+                            {users.length} Miembros
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             {/* Featured Ranking Card */}
             <div className="bg-panel border border-foreground/10 rounded-2xl p-6 shadow-xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/10 blur-3xl rounded-full group-hover:bg-primary/20 transition-all duration-700"></div>
@@ -145,7 +174,7 @@ export const Home = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground truncate">{reminder.title}</p>
-                                    <p className="text-xs text-text-dim">{new Date(reminder.date).toLocaleDateString([], { day: 'numeric', month: 'short' })} • {reminder.startTime}</p>
+                                    <p className="text-xs text-text-dim font-bold">{new Date(reminder.date).toLocaleDateString([], { day: 'numeric', month: 'short' })} • {reminder.startTime}</p>
                                 </div>
                             </div>
                         ))}
@@ -161,8 +190,8 @@ export const Home = () => {
             {/* List Activities */}
             <div className="bg-panel border border-foreground/10 rounded-2xl overflow-hidden shadow-xl">
                 <div className="px-6 py-4 border-b border-foreground/10 flex items-center justify-between bg-foreground/5">
-                    <h3 className="text-lg font-bold text-foreground">Actividad Reciente</h3>
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    <h3 className="text-lg font-bold text-foreground uppercase tracking-widest text-[12px]">Actividad Reciente</h3>
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
                 </div>
                 <div className="divide-y divide-foreground/10">
                     {recentCompletions.length > 0 ? recentCompletions.map(c => {
@@ -176,11 +205,11 @@ export const Home = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm text-foreground">
-                                        <span className="font-bold">{user.name}</span> ha completado <span className="text-primary font-medium">{task.name}</span>
+                                        <span className="font-bold">{user.name}</span> ha completado <span className="text-primary font-bold">{task.name}</span>
                                     </p>
-                                    <p className="text-xs text-text-dim">{new Date(c.timestamp).toLocaleString()}</p>
+                                    <p className="text-[10px] text-text-dim text-xs font-medium uppercase mt-1">{new Date(c.timestamp).toLocaleString()}</p>
                                 </div>
-                                <div className="text-xs font-bold text-green-500 bg-green-500/10 px-2.5 py-1 rounded-full">
+                                <div className="text-xs font-black text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
                                     +{task.points}
                                 </div>
                             </div>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { Home as HomeIcon, CheckSquare, Trophy, Settings as SettingsIcon, ShoppingCart, Utensils, CalendarDays, Star, LayoutDashboard } from 'lucide-react';
 import { AppProvider, useAppContext } from './store/AppContext';
 import { Tasks } from './pages/Tasks';
@@ -11,10 +11,11 @@ import { Reminders } from './pages/Reminders';
 import { Meals } from './pages/Meals';
 import { Dashboards } from './pages/Dashboards';
 import { JoinHousehold } from './pages/JoinHousehold';
+import { Auth } from './pages/Auth';
 import { getIcon } from './utils/icons';
 
 const Sidebar = () => {
-  const { homeSettings } = useAppContext();
+  const { homeSettings, logout } = useAppContext();
   const IconComponent = getIcon(homeSettings.logo);
 
   const links = [
@@ -38,7 +39,7 @@ const Sidebar = () => {
 
   return (
     <>
-      <div className="hidden md:flex flex-col w-64 bg-panel border-r border-foreground/10 h-screen sticky top-0 overflow-y-auto">
+      <div className="hidden md:flex flex-col w-64 bg-panel border-r border-foreground/10 h-screen sticky top-0 overflow-y-auto z-40">
         <div className="p-6 flex flex-col gap-2">
           <div className="flex items-center gap-3 mb-1">
             <img src="/logo.png" alt="Octogon" className="h-8 object-contain" />
@@ -68,7 +69,7 @@ const Sidebar = () => {
                 }
               >
                 <div className="w-5 h-5">{link.icon}</div>
-                <span className="flex-1">{link.label}</span>
+                <span className="flex-1 font-bold">{link.label}</span>
               </NavLink>
 
               {link.subItems && (
@@ -93,29 +94,38 @@ const Sidebar = () => {
             </div>
           ))}
         </nav>
+
+        <div className="p-4 mt-auto border-t border-foreground/10">
+          <button onClick={logout} className="w-full py-3 bg-foreground/5 hover:bg-red-500/10 text-text-dim hover:text-red-500 rounded-xl transition-all text-sm font-bold flex items-center justify-center gap-2">
+            Salir de Hogar
+          </button>
+        </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-panel border-t border-foreground/10 shadow-2xl flex items-center justify-around p-2 z-50">
-        {links.slice(0, 5).map(link => (
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-panel border-t border-foreground/10 shadow-2xl flex items-center justify-around px-1 pt-3 pb-6 z-50">
+        {[
+          { to: "/", icon: <HomeIcon />, label: "Inicio" },
+          { to: "/tasks", icon: <CheckSquare />, label: "Tareas" },
+          { to: "/shopping", icon: <ShoppingCart />, label: "Lista" },
+          { to: "/meals", icon: <Utensils />, label: "Cena" },
+          { to: "/settings", icon: <SettingsIcon />, label: "App" },
+        ].map(link => (
           <NavLink
             key={link.to}
             to={link.to}
             end={link.to === '/'}
             className={({ isActive }) =>
-              `p-3 rounded-xl transition-all ${isActive ? 'text-primary bg-primary/10 scale-110' : 'text-text-dim'}`
+              `flex flex-col items-center gap-1.5 px-3 py-1 transition-all ${isActive
+                ? 'text-primary'
+                : 'text-text-dim hover:text-foreground'}`
             }
           >
-            <div className="w-6 h-6">{link.icon}</div>
+            <div className={`p-2.5 rounded-2xl transition-all ${link.to === '/' ? 'bg-primary/5' : ''}`}>
+              <div className="w-6 h-6">{link.icon}</div>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider">{link.label}</span>
           </NavLink>
         ))}
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `p-3 rounded-xl transition-all ${isActive ? 'text-primary bg-primary/10 scale-110' : 'text-text-dim'}`
-          }
-        >
-          <SettingsIcon className="w-6 h-6" />
-        </NavLink>
       </div>
     </>
   );
@@ -133,10 +143,20 @@ const AppContent = () => {
     document.body.className = `theme-${theme}`;
   }, [theme]);
 
+  if (!currentUser) {
+    return (
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/join/:inviteId" element={<JoinHousehold />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
       <Sidebar />
-      <main className="flex-1 relative pb-16 md:pb-0 overflow-y-auto w-full">
+      <main className="flex-1 relative pb-24 md:pb-0 overflow-y-auto w-full">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/tasks" element={<Tasks />} />
@@ -147,6 +167,7 @@ const AppContent = () => {
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/join/:inviteId" element={<JoinHousehold />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
