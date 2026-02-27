@@ -27,16 +27,16 @@ export const Tasks = () => {
     };
 
     return (
-        <div className="p-6 md:p-8 space-y-8 max-w-5xl mx-auto">
-            <div className="flex justify-between items-center bg-panel p-6 rounded-2xl border border-white/5 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full filter blur-[80px]"></div>
+        <div className="p-6 md:p-8 space-y-8 max-w-5xl mx-auto animate-in fade-in duration-500">
+            <div className="flex justify-between items-center bg-panel p-6 rounded-2xl border border-foreground/10 shadow-xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full filter blur-[80px] group-hover:bg-primary/20 transition-all duration-700"></div>
                 <div className="relative z-10">
-                    <h2 className="text-3xl font-bold text-white mb-2">Tareas Domésticas</h2>
-                    <p className="text-gray-400">Gana <span className="text-purple-400 font-medium">{tokenName}</span> completando tus labores diarias</p>
+                    <h2 className="text-3xl font-bold text-foreground mb-2">Tareas Domésticas</h2>
+                    <p className="text-text-dim">Gana <span className="text-primary font-bold">{tokenName}</span> completando tus labores diarias</p>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="relative z-10 bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20 active:scale-95"
+                    className="relative z-10 bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg active:scale-95"
                 >
                     <Plus className="w-5 h-5" /> Nueva Tarea
                 </button>
@@ -47,9 +47,9 @@ export const Tasks = () => {
                     <TaskCard key={task.id} task={task} onEdit={() => handleOpenModal(task)} />
                 ))}
                 {tasks.length === 0 && (
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 bg-panel/50 border border-dashed border-white/10 rounded-2xl">
-                        <h3 className="text-xl font-medium text-gray-300">Aún no hay tareas</h3>
-                        <p className="text-gray-500 mt-2">Crea tu primera tarea para empezar a ganar {tokenName}</p>
+                    <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 bg-foreground/5 border border-dashed border-foreground/10 rounded-2xl">
+                        <h3 className="text-xl font-medium text-text-dim">Aún no hay tareas</h3>
+                        <p className="text-text-dim/60 mt-2 italic">Crea tu primera tarea para empezar a ganar {tokenName}</p>
                     </div>
                 )}
             </div>
@@ -70,7 +70,6 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
 
     if (!currentUser) return null;
 
-    // Filter last 7 days completions for this task
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -78,7 +77,6 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
         .filter(c => c.taskId === task.id && new Date(c.timestamp) >= sevenDaysAgo)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Completions today by current user
     const today = new Date().toDateString();
     const myCompletionsToday = taskCompletions.filter(c => c.userId === currentUser.id && new Date(c.timestamp).toDateString() === today);
 
@@ -86,7 +84,6 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
 
     const handleComplete = () => {
         if (task.frequency === 'once' && isCompletedOnce) {
-            // Undo completion
             removeCompletion(myCompletionsToday[0].id);
             return;
         }
@@ -100,20 +97,20 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
 
     const handleUndoMultiple = () => {
         if (myCompletionsToday.length > 0) {
-            removeCompletion(myCompletionsToday[0].id); // removes the most recent one today
+            removeCompletion(myCompletionsToday[0].id);
         }
     };
 
     return (
-        <div className="bg-panel border border-white/5 rounded-2xl p-5 hover:border-purple-500/30 transition-all duration-300 group shadow-lg">
+        <div className="bg-panel border border-foreground/10 rounded-2xl p-5 hover:border-primary/30 transition-all duration-300 group shadow-lg">
             <div className="flex justify-between items-start mb-4">
                 <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-purple-300 transition-colors">{task.name}</h3>
-                    <span className="text-xs font-medium text-purple-400 bg-purple-400/10 px-2 py-1 rounded-md mt-2 inline-block">
+                    <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">{task.name}</h3>
+                    <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg mt-2 inline-block">
                         +{task.points} {tokenName}
                     </span>
                 </div>
-                <button onClick={onEdit} className="text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/5">
+                <button onClick={onEdit} className="text-text-dim hover:text-foreground transition-colors p-2 rounded-lg hover:bg-foreground/5">
                     <Edit2 className="w-4 h-4" />
                 </button>
             </div>
@@ -122,9 +119,9 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
                 {task.frequency === 'once' ? (
                     <button
                         onClick={handleComplete}
-                        className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isCompletedOnce
-                            ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30'
-                            : 'bg-white/5 text-white hover:bg-purple-500 hover:text-white border border-white/10 hover:border-purple-500'
+                        className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isCompletedOnce
+                            ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30 border border-green-500/30'
+                            : 'bg-foreground/5 text-foreground hover:bg-primary hover:text-white border border-foreground/10 hover:border-primary shadow-sm'
                             }`}
                     >
                         {isCompletedOnce ? <><CheckCircle2 className="w-5 h-5" /> Completada (Deshacer)</> : 'Completar Tarea'}
@@ -133,7 +130,7 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
                     <div className="flex gap-2">
                         <button
                             onClick={handleComplete}
-                            className="flex-1 bg-white/5 hover:bg-purple-500 text-white py-3 rounded-xl font-medium transition-all active:scale-95 border border-white/10 hover:border-purple-500 shadow-md"
+                            className="flex-1 bg-foreground/5 hover:bg-primary text-foreground hover:text-white py-3 rounded-xl font-bold transition-all active:scale-95 border border-foreground/10 hover:border-primary shadow-sm"
                         >
                             Hacer (+{task.points})
                         </button>
@@ -141,7 +138,7 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
                             <button
                                 onClick={handleUndoMultiple}
                                 title="Deshacer última"
-                                className="w-12 flex items-center justify-center bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all active:scale-95"
+                                className="w-12 flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all active:scale-95"
                             >
                                 <Undo2 className="w-5 h-5" />
                             </button>
@@ -150,36 +147,33 @@ const TaskCard = ({ task, onEdit }: { task: Task, onEdit: () => void }) => {
                 )}
 
                 {task.frequency === 'multiple' && myCompletionsToday.length > 0 && (
-                    <p className="text-xs text-center text-gray-400">
-                        Has completado esto <span className="font-bold text-purple-400">{myCompletionsToday.length} veces</span> hoy.
+                    <p className="text-xs text-center text-text-dim">
+                        Completado <span className="font-bold text-primary">{myCompletionsToday.length} veces</span> hoy.
                     </p>
                 )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/5">
-                <h4 className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-3 uppercase tracking-wider">
+            <div className="mt-6 pt-4 border-t border-foreground/10">
+                <h4 className="text-[10px] font-bold text-text-dim flex items-center gap-1 mb-3 uppercase tracking-widest opacity-70">
                     <Clock className="w-3 h-3" /> Últimos 7 días
                 </h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
                     {taskCompletions.length === 0 ? (
-                        <p className="text-xs text-gray-600 italic">Nadie la ha hecho todavía.</p>
+                        <p className="text-xs text-text-dim/50 italic">Sin actividad reciente.</p>
                     ) : (
                         taskCompletions.slice(0, 5).map(c => {
                             const user = users.find(u => u.id === c.userId);
                             const date = new Date(c.timestamp).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                             return (
-                                <div key={c.id} className="flex justify-between items-center text-xs bg-black/20 p-2 rounded-lg">
+                                <div key={c.id} className="flex justify-between items-center text-xs bg-foreground/5 p-2 rounded-lg border border-foreground/5">
                                     <div className="flex items-center gap-2">
                                         <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: user?.color || '#6b7280' }} />
-                                        <span className="text-gray-300 font-medium">{user?.name}</span>
+                                        <span className="text-foreground font-medium">{user?.name}</span>
                                     </div>
-                                    <span className="text-gray-500">{date}</span>
+                                    <span className="text-text-dim opacity-70">{date}</span>
                                 </div>
                             );
                         })
-                    )}
-                    {taskCompletions.length > 5 && (
-                        <p className="text-xs text-center text-gray-500 pt-1">+ {taskCompletions.length - 5} más</p>
                     )}
                 </div>
             </div>
@@ -192,50 +186,50 @@ const TaskModal = ({ task, onClose, onSave }: { task: Task, onClose: () => void,
     const { tokenName } = useAppContext();
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-panel border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animation-fade-in">
-                <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">{task.id ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white p-1 bg-white/5 rounded-lg">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-panel border border-foreground/20 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden scale-in duration-300">
+                <div className="p-6 border-b border-foreground/10 flex justify-between items-center bg-foreground/5">
+                    <h2 className="text-xl font-bold text-foreground">{task.id ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
+                    <button onClick={onClose} className="text-text-dim hover:text-foreground p-1 bg-foreground/5 rounded-lg transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 <div className="p-6 space-y-5">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Nombre de la tarea</label>
+                        <label className="block text-sm font-bold text-text-dim mb-2 uppercase tracking-wide">Nombre</label>
                         <input
                             type="text"
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-medium"
+                            className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium"
                             placeholder="Ej: Fregar los platos"
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Frecuencia</label>
+                            <label className="block text-sm font-bold text-text-dim mb-2 uppercase tracking-wide">Frecuencia</label>
                             <select
                                 value={formData.frequency}
                                 onChange={e => setFormData({ ...formData, frequency: e.target.value as TaskFrequency })}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all appearance-none"
+                                className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer"
                             >
                                 <option value="once">1 vez al día</option>
                                 <option value="multiple">Varias veces</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Recompensa</label>
+                            <label className="block text-sm font-bold text-text-dim mb-2 uppercase tracking-wide">Puntos</label>
                             <div className="relative">
                                 <input
                                     type="number"
                                     value={formData.points}
                                     onChange={e => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-4 pr-16 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-bold"
+                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-xl pl-4 pr-16 py-3 text-foreground focus:outline-none focus:border-primary transition-all font-bold"
                                 />
                                 <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                                    <span className="text-purple-400 text-xs font-semibold">{tokenName}</span>
+                                    <span className="text-primary text-xs font-bold">{tokenName}</span>
                                 </div>
                             </div>
                         </div>
@@ -243,18 +237,13 @@ const TaskModal = ({ task, onClose, onSave }: { task: Task, onClose: () => void,
                 </div>
 
                 <div className="p-6 pt-2 flex gap-3">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 px-4 rounded-xl font-medium bg-white/5 text-gray-300 hover:bg-white/10 transition-colors"
-                    >
+                    <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl font-bold bg-foreground/10 text-foreground hover:bg-foreground/20 transition-all">
                         Cancelar
                     </button>
                     <button
-                        onClick={() => {
-                            if (formData.name.trim()) onSave(formData);
-                        }}
+                        onClick={() => { if (formData.name.trim()) onSave(formData); }}
                         disabled={!formData.name.trim()}
-                        className="flex-1 py-3 px-4 rounded-xl font-bold bg-purple-500 hover:bg-purple-400 text-white shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                        className="flex-1 py-3 px-4 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-lg disabled:opacity-50 transition-all active:scale-95"
                     >
                         Guardar
                     </button>
