@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2 } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -9,6 +9,7 @@ import { Settings } from './pages/Settings';
 import { Dashboards } from './pages/Dashboards';
 import { Auth } from './pages/Auth';
 import { JoinHousehold } from './pages/JoinHousehold';
+import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
 import { useEffect } from 'react';
@@ -36,6 +37,7 @@ const Sidebar = () => {
     { path: '/reminders', icon: Calendar, label: 'Agenda' },
     { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
     { path: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' },
+    { path: '/meals', icon: Utensils, label: 'Menú' },
     { path: '/settings', icon: SettingsIcon, label: 'Ajustes' },
   ];
 
@@ -188,6 +190,7 @@ const AppContent = () => {
           <Route path="/reminders" element={<Reminders />} />
           <Route path="/shopping" element={<Shopping />} />
           <Route path="/dashboards" element={<Dashboards />} />
+          <Route path="/meals" element={<Meals />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/auth" element={<Navigate to="/" replace />} />
           <Route path="/join/:inviteId" element={<JoinHousehold />} />

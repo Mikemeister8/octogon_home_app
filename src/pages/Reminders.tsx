@@ -67,7 +67,7 @@ export const Reminders = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Fecha</label>
                                     <input

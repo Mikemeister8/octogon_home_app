@@ -9,6 +9,7 @@ export interface Task {
     default_points: number;
     allow_multiple_per_day: boolean;
     is_active: boolean;
+    sort_order?: number;
 }
 
 export interface TaskCompletion {

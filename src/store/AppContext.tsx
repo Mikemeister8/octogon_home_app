@@ -45,6 +45,7 @@ interface AppState {
 
     generateInviteId: () => Promise<string>;
     joinHouseholdLink: (inviteId: string) => Promise<void>;
+    resetAllData: () => Promise<void>;
     logout: () => Promise<void>;
     loading: boolean;
 }
@@ -247,6 +248,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             await supabase.auth.signOut();
             setCurrentUser(null);
             setHomeSettings(null);
+        },
+        resetAllData: async () => {
+            if (!homeSettings) return;
+            await supabase.from('task_completions').delete().neq('id', '');
+            await supabase.from('shopping_items').delete().eq('household_id', homeSettings.id);
+            setCompletions([]);
+            setShoppingItems([]);
         }
     };
 

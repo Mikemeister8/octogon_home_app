@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { ICONS } from '../utils/icons';
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#00FF88', '#FF5D00'];
@@ -12,7 +12,7 @@ export const Settings = () => {
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
-        generateInviteId, logout, loading
+        generateInviteId, resetAllData, logout, loading
     } = useAppContext();
 
     const [localToken, setLocalToken] = useState(tokenName);
@@ -337,6 +337,32 @@ export const Settings = () => {
                         <p className="col-span-full py-10 text-center text-text-dim font-bold italic opacity-40">No hay alimentos en la base de datos</p>
                     )}
                 </div>
+            </div>
+
+            {/* Reset App Section */}
+            <div className="bg-panel border border-red-500/20 rounded-[2.5rem] p-10 shadow-2xl space-y-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-red-500/10 rounded-3xl">
+                        <AlertTriangle className="w-8 h-8 text-red-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Zona de Peligro</h2>
+                        <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest">Resetear datos de la app</p>
+                    </div>
+                </div>
+                <p className="text-sm text-text-dim">Esto eliminará <strong>todas las tareas realizadas</strong>, <strong>puntos acumulados</strong> y la <strong>lista de la compra</strong>. Las tareas, los miembros y la configuración se mantendrán. Esta acción no se puede deshacer.</p>
+                <button
+                    onClick={async () => {
+                        if (window.confirm('¿Estás completamente seguro? Se borrarán TODOS los puntos, rankings y la lista de la compra. Las tareas y miembros se mantienen.')) {
+                            await resetAllData();
+                            alert('¡App reseteada! Todos los datos de actividad se han eliminado.');
+                        }
+                    }}
+                    className="w-full py-5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 border border-red-500/20"
+                >
+                    <Trash2 className="w-5 h-5" />
+                    Resetear Toda la Actividad
+                </button>
             </div>
         </div>
     );
