@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { ShoppingCart, Plus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
+import type { ShoppingConcept, ShoppingItem } from '../types';
 
 export const Shopping = () => {
     const {
@@ -8,7 +9,7 @@ export const Shopping = () => {
         shoppingConcepts, addShoppingConcept, currentUser, loading
     } = useAppContext();
     const [newItem, setNewItem] = useState('');
-    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<ShoppingConcept[]>([]);
 
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
@@ -38,7 +39,7 @@ export const Shopping = () => {
         setSuggestions([]);
     };
 
-    const toggleBought = async (item: any) => {
+    const toggleBought = async (item: ShoppingItem) => {
         await updateShoppingItem({ ...item, is_purchased: !item.is_purchased });
     };
 

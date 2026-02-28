@@ -109,7 +109,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 full_name: profile.full_name,
                 avatar_url: profile.avatar_url || '',
                 color_hex: profile.color_hex || '#00FF88',
-                theme: profile.theme as any || 'cyber',
+                theme: (profile.theme as 'cyber' | 'light' | 'octogon') || 'cyber',
                 household_id: profile.household_id
             };
 
@@ -126,7 +126,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 ]);
 
                 if (hRes.data) setHomeSettings({ ...hRes.data, themeColor: hRes.data.themeColor || '#00FF88' });
-                if (usersRes.data) setUsers(usersRes.data.map((u: any) => ({ ...u, full_name: u.full_name, color_hex: u.color_hex, theme: u.theme || 'cyber' })));
+                if (usersRes.data) setUsers(usersRes.data.map((u) => ({
+                    id: u.id,
+                    email: '',
+                    avatar_url: u.avatar_url || '',
+                    household_id: u.household_id,
+                    full_name: u.full_name,
+                    color_hex: u.color_hex,
+                    theme: (u.theme as 'cyber' | 'light' | 'octogon') || 'cyber'
+                })));
                 if (tasksRes.data) setTasks(tasksRes.data);
                 if (compRes.data) setCompletions(compRes.data);
                 if (remRes.data) setReminders(remRes.data);

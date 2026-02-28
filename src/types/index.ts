@@ -79,7 +79,7 @@ export interface WeeklyMenu {
     id: string;
     name: string;
     isFavorite: boolean;
-    slots: any[];
+    slots: unknown[];
     blocks: MealBlock[];
 }
 

@@ -4,8 +4,34 @@ import { Award, Target, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, M
 import { Link } from 'react-router-dom';
 import { getIcon } from '../utils/icons';
 
+const PodioMini = ({ top1, top2 }: { top1?: { user: { color_hex: string, full_name: string }, points: number }, top2?: { user: { color_hex: string, full_name: string }, points: number } }) => (
+    <div className="flex items-end justify-center gap-4 h-32 sm:h-40 my-6">
+        {top2 && (
+            <div className="flex flex-col items-center justify-end h-full opacity-90">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 shadow-lg`} style={{ backgroundColor: top2.user.color_hex, color: '#fff' }}>
+                    {top2.user.full_name[0]}
+                </div>
+                <div className="bg-panel p-2 rounded-t-lg w-14 sm:w-16 text-center border-t border-foreground/10 h-14 sm:h-16 flex flex-col justify-start pt-2">
+                    <span className="text-text-dim text-[10px] font-bold">{top2.points}</span>
+                </div>
+            </div>
+        )}
+        {top1 && (
+            <div className="flex flex-col items-center justify-end h-full z-10">
+                <Award className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 animate-pulse mb-1" />
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center font-bold text-xl sm:text-2xl mb-2 shadow-lg border-2 border-yellow-500`} style={{ backgroundColor: top1.user.color_hex, color: '#fff' }}>
+                    {top1.user.full_name[0]}
+                </div>
+                <div className="bg-yellow-500/20 p-2 rounded-t-lg w-16 sm:w-20 text-center border-t border-yellow-500/50 h-16 sm:h-20 flex flex-col justify-start pt-2 backdrop-blur-sm">
+                    <span className="text-yellow-500 font-extrabold text-sm sm:text-base">{top1.points}</span>
+                </div>
+            </div>
+        )}
+    </div>
+);
+
 export const Home = () => {
-    const { users, tasks, completions, currentUser, tokenName, reminders, homeSettings, loading } = useAppContext();
+    const { users, tasks, completions, currentUser, reminders, homeSettings, loading } = useAppContext();
 
     if (loading || !homeSettings || !currentUser) {
         return (
@@ -16,45 +42,15 @@ export const Home = () => {
     }
 
     const today = new Date();
-    const currentMonthIdx = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    const currentRankings = calculateRankings(users, tasks, completions, currentMonthIdx, currentYear);
+    const currentRankings = calculateRankings(users, tasks, completions, today.getMonth(), today.getFullYear());
     const top1 = currentRankings[0];
     const top2 = currentRankings[1];
     const isFirst = currentUser && top1 && top1.user.id === currentUser.id;
 
     const HomeIconComponent = getIcon(homeSettings.logo || 'Home');
 
-    const PodioMini = ({ top1, top2 }: { top1?: any, top2?: any }) => (
-        <div className="flex items-end justify-center gap-4 h-32 sm:h-40 my-6">
-            {top2 && (
-                <div className="flex flex-col items-center justify-end h-full opacity-90">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 shadow-lg`} style={{ backgroundColor: top2.user.color_hex, color: '#fff' }}>
-                        {top2.user.full_name[0]}
-                    </div>
-                    <div className="bg-panel p-2 rounded-t-lg w-14 sm:w-16 text-center border-t border-foreground/10 h-14 sm:h-16 flex flex-col justify-start pt-2">
-                        <span className="text-text-dim text-[10px] font-bold">{top2.points}</span>
-                    </div>
-                </div>
-            )}
-            {top1 && (
-                <div className="flex flex-col items-center justify-end h-full z-10">
-                    <Award className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 animate-pulse mb-1" />
-                    <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center font-bold text-xl sm:text-2xl mb-2 shadow-lg border-2 border-yellow-500`} style={{ backgroundColor: top1.user.color_hex, color: '#fff' }}>
-                        {top1.user.full_name[0]}
-                    </div>
-                    <div className="bg-yellow-500/20 p-2 rounded-t-lg w-16 sm:w-20 text-center border-t border-yellow-500/50 h-16 sm:h-20 flex flex-col justify-start pt-2 backdrop-blur-sm">
-                        <span className="text-yellow-500 font-extrabold text-sm sm:text-base">{top1.points}</span>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-
     return (
         <div className="p-4 sm:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            {/* Cabecera Octogon */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-4 py-2 bg-foreground/5 rounded-3xl border border-foreground/10">
                 <div className="flex items-center gap-4 group">
                     <div className="p-2 sm:p-2.5 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 shrink-0">
@@ -80,7 +76,6 @@ export const Home = () => {
                 </div>
             </div>
 
-            {/* Featured Ranking Card */}
             <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/10 blur-3xl rounded-full group-hover:bg-primary/20 transition-all duration-700"></div>
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
@@ -119,7 +114,6 @@ export const Home = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-panel border border-foreground/10 p-6 rounded-3xl shadow-lg hover:translate-y-[-4px] transition-all group overflow-hidden relative">
                         <div className="absolute top-0 right-0 p-2 opacity-5">
@@ -159,7 +153,6 @@ export const Home = () => {
                     </div>
                 </div>
 
-                {/* Agenda Rápida */}
                 <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl">
                     <h3 className="text-xl font-black text-foreground tracking-tight uppercase italic mb-6 flex items-center gap-3">
                         <CalendarDays className="w-5 h-5 text-primary" />
