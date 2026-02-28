@@ -83,7 +83,7 @@ export const Auth = () => {
                     <h1 className="text-4xl font-black tracking-tighter uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-br from-primary to-accent">
                         Octogon Home
                     </h1>
-                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • Hogar Unido</p>
+                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • v2.0</p>
                 </div>
 
                 <div className="bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -193,11 +193,13 @@ export const Auth = () => {
 
                     {view === 'login' && (
                         <form onSubmit={handleLogin} className="space-y-6 relative z-10">
-                            <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
-                                <Zap className="text-primary w-6 h-6" />
-                                Iniciar Sesión
+                            <h2 className="text-2xl font-bold flex flex-col gap-1 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="text-primary w-6 h-6" />
+                                    Iniciar Sesión
+                                </div>
+                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-50">Auth Protocol v2.0</span>
                             </h2>
-
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Email</label>

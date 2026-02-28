@@ -4,22 +4,24 @@
 
 @layer base {
   :root {
-    /* Default is Cyber */
-    --color-bg: #0F1115;
-    --color-panel: #1A1D23;
-    --color-primary: #8A2BE2;
-    --color-accent: #ec4899;
+    /* Default is now THEME CYBER (Mint Green & Electric Orange) */
+    --color-bg: #1F1E1E;
+    --color-panel: #262525;
+    --color-primary: #00FF88;
+    /* Mint Green */
+    --color-accent: #FF5D00;
+    /* Electric Orange */
     --color-text: #ffffff;
-    --color-text-dim: #9ca3af;
+    --color-text-dim: rgba(0, 255, 136, 0.5);
   }
 
   .theme-cyber {
-    --color-bg: #0F1115;
-    --color-panel: #1A1D23;
-    --color-primary: #8A2BE2;
-    --color-accent: #ec4899;
+    --color-bg: #1F1E1E;
+    --color-panel: #262525;
+    --color-primary: #00FF88;
+    --color-accent: #FF5D00;
     --color-text: #ffffff;
-    --color-text-dim: #9ca3af;
+    --color-text-dim: rgba(0, 255, 136, 0.5);
   }
 
   .theme-light {
@@ -34,24 +36,21 @@
   }
 
   .theme-octogon {
-    --color-bg: #1F1E1E;
-    --color-panel: #262525;
-    --color-primary: #00FF88;
-    /* Mint Green */
-    --color-accent: #FF5D00;
-    /* Electric Orange */
+    /* Original Cyber colors (Purple/Pink/Dark) */
+    --color-bg: #0F1115;
+    --color-panel: #1A1D23;
+    --color-primary: #8A2BE2;
+    --color-accent: #ec4899;
     --color-text: #ffffff;
-    --color-text-dim: #00FF8880;
+    --color-text-dim: #9ca3af;
   }
 
   body {
-    @apply bg-background antialiased transition-colors duration-500;
-    color: var(--color-text);
+    @apply bg-background antialiased transition-colors duration-500 min-h-screen text-foreground;
   }
 
-  /* Universal text color adjustment */
   * {
-    border-color: rgba(var(--color-text), 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -67,4 +66,9 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-panel rounded-full hover:bg-primary transition-colors;
+}
+
+/* Fix for light mode border colors */
+.theme-light * {
+  border-color: rgba(0, 0, 0, 0.1);
 }
