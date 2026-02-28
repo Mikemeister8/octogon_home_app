@@ -8,9 +8,7 @@
     --color-bg: #1F1E1E;
     --color-panel: #262525;
     --color-primary: #00FF88;
-    /* Mint Green */
     --color-accent: #FF5D00;
-    /* Electric Orange */
     --color-text: #ffffff;
     --color-text-dim: rgba(0, 255, 136, 0.5);
   }
@@ -28,15 +26,12 @@
     --color-bg: #ffffff;
     --color-panel: #f8fafc;
     --color-primary: #8A2BE2;
-    /* Purple buttons */
     --color-accent: #3b82f6;
-    /* Electric Blue */
     --color-text: #0f172a;
     --color-text-dim: #64748b;
   }
 
   .theme-octogon {
-    /* Original Cyber colors (Purple/Pink/Dark) */
     --color-bg: #0F1115;
     --color-panel: #1A1D23;
     --color-primary: #8A2BE2;
@@ -46,11 +41,31 @@
   }
 
   body {
-    @apply bg-background antialiased transition-colors duration-500 min-h-screen text-foreground;
+    @apply bg-background antialiased transition-colors duration-500 min-h-screen;
+    color: var(--color-text);
+  }
+
+  /* CRITICAL: Fix input and text contrast across all themes */
+  input,
+  textarea,
+  select {
+    color: var(--color-text) !important;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .theme-light input,
+  .theme-light textarea,
+  .theme-light select {
+    color: #0f172a !important;
+    background-color: rgba(0, 0, 0, 0.05);
   }
 
   * {
     border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .theme-light * {
+    border-color: rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -66,9 +81,4 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-panel rounded-full hover:bg-primary transition-colors;
-}
-
-/* Fix for light mode border colors */
-.theme-light * {
-  border-color: rgba(0, 0, 0, 0.1);
 }

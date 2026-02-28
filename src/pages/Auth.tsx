@@ -13,6 +13,7 @@ export const Auth = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [needsVerification, setNeedsVerification] = useState(false);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,6 +25,9 @@ export const Auth = () => {
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                }
             });
 
             if (authError) throw authError;
@@ -52,7 +56,7 @@ export const Auth = () => {
 
             if (pError) throw pError;
 
-            // Success! The onAuthStateChange will handle redirection
+            setNeedsVerification(true);
         } catch (err: any) {
             setError(err.message || 'Error en el registro');
         } finally {
@@ -95,7 +99,29 @@ export const Auth = () => {
                         </div>
                     )}
 
-                    {view === 'welcome' && (
+                    {needsVerification ? (
+                        <div className="space-y-8 py-6 text-center animate-in fade-in zoom-in duration-500">
+                            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Mail className="w-10 h-10 text-primary animate-bounce" />
+                            </div>
+                            <div className="space-y-3">
+                                <h2 className="text-2xl font-black text-foreground uppercase italic tracking-tight">¡Casi listo!</h2>
+                                <p className="text-sm text-text-dim font-medium italic text-balance">
+                                    Hemos enviado un enlace de confirmación a <span className="text-primary font-bold">{email}</span>.
+                                    Por favor, revisa tu bandeja de entrada.
+                                </p>
+                            </div>
+                            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
+                                <p>IMPORTANTE: Si el enlace te da error, asegúrate de que el 'Site URL' en el Dashboard de Supabase apunte a tu nueva URL de Vercel.</p>
+                            </div>
+                            <button
+                                onClick={() => { setNeedsVerification(false); setView('login'); }}
+                                className="w-full py-4 bg-foreground/5 hover:bg-foreground/10 text-foreground border border-foreground/10 rounded-2xl font-bold transition-all text-sm uppercase tracking-widest"
+                            >
+                                Volver al Iniciar Sesión
+                            </button>
+                        </div>
+                    ) : view === 'welcome' ? (
                         <div className="space-y-6 relative z-10">
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold">¡Empieza hoy!</h2>
@@ -125,9 +151,7 @@ export const Auth = () => {
                                 <Moon className="w-5 h-5" />
                             </div>
                         </div>
-                    )}
-
-                    {view === 'register' && (
+                    ) : view === 'register' ? (
                         <form onSubmit={handleRegister} className="space-y-5 relative z-10">
                             <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
                                 <Home className="text-primary w-6 h-6" />
@@ -161,7 +185,7 @@ export const Auth = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
+                                        <label className="text-[10px) font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
                                         <input
                                             required
                                             value={userName} onChange={e => setUserName(e.target.value)}
@@ -189,9 +213,7 @@ export const Auth = () => {
                                 Volver atrás
                             </button>
                         </form>
-                    )}
-
-                    {view === 'login' && (
+                    ) : (
                         <form onSubmit={handleLogin} className="space-y-6 relative z-10">
                             <h2 className="text-2xl font-bold flex flex-col gap-1 mb-2">
                                 <div className="flex items-center gap-2">
