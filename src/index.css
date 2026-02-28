@@ -14,12 +14,15 @@
   }
 
   .theme-cyber {
-    --color-bg: #1F1E1E;
-    --color-panel: #262525;
-    --color-primary: #00FF88;
-    --color-accent: #FF5D00;
+    --color-bg: #1A1A1A;
+    /* Gris Oscuro */
+    --color-panel: #242424;
+    --color-primary: #A855F7;
+    /* Morado */
+    --color-accent: #FACC15;
+    /* Amarillo */
     --color-text: #ffffff;
-    --color-text-dim: rgba(0, 255, 136, 0.5);
+    --color-text-dim: #9ca3af;
   }
 
   .theme-light {
@@ -40,9 +43,20 @@
     --color-text-dim: #9ca3af;
   }
 
+  html,
   body {
-    @apply bg-background antialiased transition-colors duration-500 min-h-screen;
+    @apply antialiased transition-colors duration-500 overflow-x-hidden;
+    background-color: var(--color-bg);
     color: var(--color-text);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    touch-action: manipulation;
+  }
+
+  #root {
+    width: 100%;
+    overflow-x: hidden;
   }
 
   /* CRITICAL: Fix input and text contrast across all themes */

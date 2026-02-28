@@ -13,6 +13,14 @@ import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
 import { useEffect } from 'react';
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
 const Sidebar = () => {
   const { currentUser, homeSettings, logout } = useAppContext();
   const location = useLocation();
@@ -95,42 +103,34 @@ const MobileNav = () => {
   const navItems = [
     { path: '/', icon: Home, label: 'Inicio' },
     { path: '/tasks', icon: ListTodo, label: 'Tareas' },
-    { path: '/competition', icon: Trophy, label: 'Podio' },
+    { path: '/dashboards', icon: LayoutDashboard, label: 'Panel' },
     { path: '/reminders', icon: Calendar, label: 'Agenda' },
     { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-panel/90 backdrop-blur-3xl border-t border-foreground/10 lg:hidden z-50 px-2 pb-safe-area shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-      <div className="flex justify-around items-end h-24 max-w-lg mx-auto">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex flex-col items-center justify-center w-full py-4 transition-all ${location.pathname === item.path ? 'text-primary' : 'text-text-dim'
-              }`}
-          >
-            <div className={`p-2.5 rounded-2xl transition-all duration-300 ${location.pathname === item.path ? 'bg-primary/20 scale-110 mb-1' : 'mb-0.5'}`}>
-              <item.icon className={`w-7 h-7 ${location.pathname === item.path ? 'text-primary' : 'text-text-dim'}`} />
-            </div>
-            <span className={`text-[9px] font-black tracking-widest uppercase truncate max-w-[60px] transition-all ${location.pathname === item.path ? 'opacity-100' : 'opacity-40'}`}>
-              {item.label}
-            </span>
-            {location.pathname === item.path && (
-              <div className="h-1.5 w-1.5 bg-primary rounded-full mt-1.5 animate-in zoom-in" />
-            )}
-          </Link>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 bg-panel/80 backdrop-blur-2xl border-t border-foreground/5 lg:hidden z-50 px-4 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+      <div className="flex justify-between items-center h-20 max-w-lg mx-auto">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex flex-col items-center justify-center w-14 h-14 transition-all duration-300 rounded-2xl ${isActive ? 'bg-primary/20 text-primary' : 'text-text-dim/60 grayscale'
+                }`}
+            >
+              <item.icon className={`w-6 h-6 ${isActive ? 'scale-110' : 'scale-100 opacity-60'}`} />
+              {isActive && <span className="text-[8px] font-black uppercase tracking-widest mt-1 animate-in fade-in slide-in-from-bottom-1">{item.label}</span>}
+            </Link>
+          );
+        })}
         <Link
           to="/settings"
-          className={`flex flex-col items-center justify-center w-full py-4 transition-all opacity-40`}
+          className={`flex flex-col items-center justify-center w-14 h-14 transition-all duration-300 rounded-2xl ${location.pathname === '/settings' ? 'bg-primary/20 text-primary' : 'text-text-dim/60 grayscale'
+            }`}
         >
-          <div className={`p-2.5 rounded-2xl transition-all duration-300 ${location.pathname === '/settings' ? 'bg-primary/20 scale-110 mb-1' : 'mb-0.5'}`}>
-            <SettingsIcon className={`w-7 h-7 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim'}`} />
-          </div>
-          <span className={`text-[9px] font-black tracking-widest uppercase truncate max-w-[60px] transition-all`}>
-            Más
-          </span>
+          <SettingsIcon className={`w-6 h-6 ${location.pathname === '/settings' ? 'scale-110' : 'scale-100 opacity-60'}`} />
         </Link>
       </div>
     </nav>
@@ -177,6 +177,7 @@ const AppContent = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground pb-24 lg:pb-0 lg:pl-72 selection:bg-primary selection:text-white">
+      <ScrollToTop />
       <Sidebar />
       <main className="flex-1 w-full max-w-7xl mx-auto">
         <Routes>

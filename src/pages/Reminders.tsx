@@ -55,7 +55,7 @@ export const Reminders = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Formulario */}
                 <div className="lg:col-span-1">
-                    <form onSubmit={handleAdd} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl space-y-6 sticky top-8">
+                    <form onSubmit={handleAdd} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl space-y-6 lg:sticky lg:top-8">
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">¿Qué hay que recordar?</label>
@@ -130,13 +130,13 @@ export const Reminders = () => {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 mb-1">
-                                    <h3 className="text-2xl font-black text-foreground tracking-tight uppercase italic truncate">{reminder.title}</h3>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-1">
+                                    <h3 className="text-2xl font-black text-foreground tracking-tight uppercase italic break-words shrink-1">{reminder.title}</h3>
                                     <span className="px-3 py-1 bg-foreground/5 text-text-dim text-[10px] font-black uppercase tracking-widest rounded-full border border-foreground/10">
                                         {new Date(reminder.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                                     </span>
                                 </div>
-                                <p className="text-sm text-text-dim font-medium italic opacity-60 mb-4">{reminder.description || 'Sin descripción'}</p>
+                                <p className="text-sm text-text-dim font-medium italic opacity-60 mb-4 whitespace-pre-wrap break-words">{reminder.description || 'Sin descripción'}</p>
 
                                 <div className="flex items-center gap-2">
                                     {reminder.assigned_to.map(uid => {

@@ -1,18 +1,41 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { ShoppingCart, Plus, CheckCircle2, Trash2, Calendar, ShoppingBag, Loader2 } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
 
 export const Shopping = () => {
-    const { shoppingItems, addShoppingItem, updateShoppingItem, deleteShoppingItem, currentUser, loading } = useAppContext();
+    const {
+        shoppingItems, addShoppingItem, updateShoppingItem, deleteShoppingItem,
+        shoppingConcepts, addShoppingConcept, currentUser, loading
+    } = useAppContext();
     const [newItem, setNewItem] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
 
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newItem.trim() || !currentUser) return;
-        await addShoppingItem(newItem.trim(), currentUser.id);
+    const handleInputChange = (e: string) => {
+        setNewItem(e);
+        if (e.trim().length > 1) {
+            const filtered = shoppingConcepts.filter(c =>
+                c.name.toLowerCase().includes(e.toLowerCase())
+            ).slice(0, 5);
+            setSuggestions(filtered);
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const handleAdd = async (name: string) => {
+        if (!name.trim() || !currentUser) return;
+
+        // Check if exists in DB, if not add it
+        const exists = shoppingConcepts.some(c => c.name.toLowerCase() === name.toLowerCase());
+        if (!exists) {
+            await addShoppingConcept(name.trim());
+        }
+
+        await addShoppingItem(name.trim(), currentUser.id);
         setNewItem('');
+        setSuggestions([]);
     };
 
     const toggleBought = async (item: any) => {
@@ -20,7 +43,6 @@ export const Shopping = () => {
     };
 
     const activeItems = shoppingItems.filter(i => !i.is_purchased);
-    const completedItems = shoppingItems.filter(i => i.is_purchased);
 
     return (
         <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto animate-in fade-in duration-700">
@@ -37,73 +59,63 @@ export const Shopping = () => {
                 </div>
             </header>
 
-            <form onSubmit={handleAdd} className="relative group">
-                <input
-                    type="text"
-                    value={newItem}
-                    onChange={e => setNewItem(e.target.value)}
-                    placeholder="¿Qué falta en la nevera?"
-                    className="w-full bg-panel border border-foreground/10 rounded-2xl py-5 px-6 pr-20 text-lg font-bold text-foreground focus:outline-none focus:border-accent transition-all shadow-xl placeholder:font-medium placeholder:opacity-50"
-                />
-                <button type="submit" disabled={!newItem.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-accent hover:bg-accent/90 text-white rounded-xl transition-all shadow-lg shadow-accent/20 disabled:opacity-50 active:scale-95">
-                    <Plus className="w-6 h-6" />
-                </button>
-            </form>
+            <div className="relative group">
+                <form onSubmit={(e) => { e.preventDefault(); handleAdd(newItem); }} className="relative">
+                    <input
+                        type="text"
+                        value={newItem}
+                        onChange={e => handleInputChange(e.target.value)}
+                        placeholder="Escribe un producto..."
+                        className="w-full bg-panel border border-foreground/10 rounded-2xl py-5 px-6 pr-20 text-lg font-bold text-foreground focus:outline-none focus:border-primary transition-all shadow-xl placeholder:opacity-30"
+                    />
+                    <button type="submit" disabled={!newItem.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-30">
+                        <Plus className="w-6 h-6" />
+                    </button>
+                </form>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                {/* Active Items */}
-                <div className="bg-panel border border-foreground/10 rounded-[2rem] overflow-hidden shadow-xl">
-                    <div className="px-8 py-5 border-b border-foreground/10 flex items-center justify-between bg-foreground/5">
-                        <h3 className="text-xs font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
-                            <ShoppingBag className="w-4 h-4" /> Pendientes
-                        </h3>
-                        <span className="bg-accent/20 text-accent text-[10px] font-black px-3 py-1 rounded-full">{activeItems.length}</span>
+                {suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-panel border border-foreground/10 rounded-2xl shadow-2xl z-20 overflow-hidden divide-y divide-foreground/5 animate-in fade-in slide-in-from-top-2">
+                        {suggestions.map(s => (
+                            <button
+                                key={s.id}
+                                onClick={() => handleAdd(s.name)}
+                                className="w-full text-left p-4 hover:bg-primary/10 hover:text-primary transition-all font-bold flex items-center justify-between group"
+                            >
+                                {s.name}
+                                <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100" />
+                            </button>
+                        ))}
                     </div>
-                    <div className="divide-y divide-foreground/5 max-h-[400px] overflow-y-auto custom-scrollbar">
-                        {activeItems.length > 0 ? activeItems.map(item => (
-                            <div key={item.id} className="p-4 sm:px-6 flex items-center gap-4 hover:bg-foreground/5 group transition-colors">
-                                <button
-                                    onClick={() => toggleBought(item)}
-                                    className="w-7 h-7 rounded-xl border-2 border-accent/30 hover:bg-accent/10 flex items-center justify-center transition-all shrink-0"
-                                >
-                                    <div className="w-3 h-3 bg-accent rounded-sm opacity-0 group-hover:opacity-20 transition-opacity" />
-                                </button>
-                                <span className="flex-1 text-foreground font-black tracking-tight">{item.name}</span>
-                                <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )) : (
-                            <div className="p-12 text-center text-text-dim italic font-medium">Lista de compra vacia</div>
-                        )}
-                    </div>
+                )}
+            </div>
+
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-4">
+                    <h3 className="text-xs font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4" /> En la lista
+                    </h3>
+                    <span className="bg-primary/20 text-primary text-[10px] font-black px-3 py-1 rounded-full">{activeItems.length}</span>
                 </div>
 
-                {/* Recently Bought */}
-                <div className="bg-panel/50 border border-foreground/10 rounded-[2rem] overflow-hidden shadow-xl">
-                    <div className="px-8 py-5 border-b border-foreground/10 flex items-center justify-between bg-foreground/5 opacity-60">
-                        <h3 className="text-xs font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" /> En el carro
-                        </h3>
-                    </div>
-                    <div className="divide-y divide-foreground/2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                        {completedItems.length > 0 ? completedItems.map(item => (
-                            <div key={item.id} className="p-4 sm:px-6 flex items-center gap-4 hover:bg-foreground/2 transition-colors group opacity-60">
-                                <button
-                                    onClick={() => toggleBought(item)}
-                                    className="w-7 h-7 rounded-xl bg-accent/20 flex items-center justify-center shrink-0 border border-accent/20"
-                                >
-                                    <CheckCircle2 className="w-4 h-4 text-accent" />
-                                </button>
-                                <span className="flex-1 text-foreground font-medium line-through decoration-2 decoration-accent/30">{item.name}</span>
-                                <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 transition-opacity">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )) : (
-                            <div className="p-8 text-center text-text-dim text-xs">Aun no has marcado ningun producto</div>
-                        )}
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {activeItems.length > 0 ? activeItems.map(item => (
+                        <div key={item.id} className="bg-panel border border-foreground/10 p-5 rounded-2xl flex items-center gap-4 hover:border-primary/30 group transition-all shadow-md">
+                            <button
+                                onClick={() => toggleBought(item)}
+                                className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center transition-all shrink-0"
+                            >
+                                <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20 transition-opacity" />
+                            </button>
+                            <span className="flex-1 text-foreground font-black tracking-tight">{item.name}</span>
+                            <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 opacity-40 hover:opacity-100 transition-opacity">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )) : (
+                        <div className="col-span-full py-20 text-center bg-panel/30 border-2 border-dashed border-foreground/5 rounded-[3rem]">
+                            <p className="text-text-dim font-black uppercase tracking-[0.4em] italic opacity-30">Todo comprado</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

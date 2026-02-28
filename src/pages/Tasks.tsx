@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { ListTodo, Plus, Trash2, CheckCircle2, Trophy, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { ListTodo, Plus, Trash2, CheckCircle2, Trophy, Loader2, Sparkles, AlertCircle, X, Clock } from 'lucide-react';
 
 export const Tasks = () => {
-    const { tasks, addTask, deleteTask, addCompletion, currentUser, loading, tokenName } = useAppContext();
+    const { tasks, completions, addTask, deleteTask, addCompletion, currentUser, loading, tokenName } = useAppContext();
     const [title, setTitle] = useState('');
     const [points, setPoints] = useState(10);
+    const [allowMultiple, setAllowMultiple] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
 
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
@@ -17,7 +18,7 @@ export const Tasks = () => {
             title: title.trim(),
             default_points: points,
             is_active: true,
-            allow_multiple_per_day: true
+            allow_multiple_per_day: allowMultiple
         });
         setTitle('');
         setPoints(10);
@@ -85,6 +86,27 @@ export const Tasks = () => {
                                 </div>
                             </div>
                         </div>
+                        <div className="space-y-3">
+                            <label className="text-xs font-black uppercase text-text-dim tracking-widest ml-1 flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-primary" /> Frecuencia
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setAllowMultiple(false)}
+                                    className={`py-4 rounded-2xl font-bold transition-all border ${!allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10'}`}
+                                >
+                                    Una vez al día
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAllowMultiple(true)}
+                                    className={`py-4 rounded-2xl font-bold transition-all border ${allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10'}`}
+                                >
+                                    Varias veces
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <button className="w-full py-5 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-xl shadow-primary/20 transition-all active:scale-95 text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3">
                         <Plus className="w-5 h-5" />
@@ -94,33 +116,47 @@ export const Tasks = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tasks.length > 0 ? tasks.map(task => (
-                    <div key={task.id} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl group hover:border-primary/20 hover:translate-y-[-4px] transition-all relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => deleteTask(task.id)} className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-lg">
-                                <Trash2 className="w-4 h-4" />
+                {tasks.length > 0 ? tasks.map(task => {
+                    const isCompletedToday = completions.some(c =>
+                        c.task_id === task.id &&
+                        c.user_id === currentUser?.id &&
+                        new Date(c.completed_at).toDateString() === new Date().toDateString()
+                    );
+                    const canComplete = task.allow_multiple_per_day || !isCompletedToday;
+
+                    return (
+                        <div key={task.id} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl group hover:border-primary/20 hover:translate-y-[-4px] transition-all relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => deleteTask(task.id)} className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-lg">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="mb-8">
+                                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 border border-primary/20 group-hover:scale-110 transition-transform">
+                                    <CheckCircle2 className="w-6 h-6 text-primary" />
+                                </div>
+                                <h3 className="text-2xl font-black text-foreground tracking-tight uppercase italic mb-2">{task.title}</h3>
+                                <div className="flex items-center gap-2 text-primary">
+                                    <span className="text-xs font-black uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20">+{task.default_points} {tokenName}</span>
+                                    {!task.allow_multiple_per_day && <span className="text-[8px] font-black uppercase tracking-tighter opacity-40 italic">Solo una vez al día</span>}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => handleComplete(task.id, task.default_points)}
+                                disabled={!canComplete}
+                                className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg uppercase text-[10px] tracking-widest border border-foreground/10 ${!canComplete
+                                    ? 'bg-foreground/5 text-text-dim/30 cursor-not-allowed'
+                                    : 'bg-foreground/5 hover:bg-primary text-text-dim hover:text-white hover:border-primary group-hover:bg-primary group-hover:text-white'
+                                    }`}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {isCompletedToday && !task.allow_multiple_per_day ? 'Completado hoy' : 'Marcar Completada'}
                             </button>
                         </div>
-
-                        <div className="mb-8">
-                            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 border border-primary/20 group-hover:scale-110 transition-transform">
-                                <CheckCircle2 className="w-6 h-6 text-primary" />
-                            </div>
-                            <h3 className="text-2xl font-black text-foreground tracking-tight uppercase italic mb-2">{task.title}</h3>
-                            <div className="flex items-center gap-2 text-primary">
-                                <span className="text-xs font-black uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20">+{task.default_points} {tokenName}</span>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => handleComplete(task.id, task.default_points)}
-                            className="w-full py-4 bg-foreground/5 hover:bg-primary text-text-dim hover:text-white rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg group-hover:bg-primary group-hover:text-white uppercase text-[10px] tracking-widest border border-foreground/10 hover:border-primary"
-                        >
-                            Completar Misión
-                            <CheckCircle2 className="w-5 h-5" />
-                        </button>
-                    </div>
-                )) : (
+                    );
+                }) : (
                     <div className="col-span-full py-40 text-center bg-panel border-2 border-dashed border-foreground/10 rounded-[4rem]">
                         <ListTodo className="w-20 h-20 text-text-dim/10 mx-auto mb-6" />
                         <p className="text-text-dim font-black uppercase tracking-[0.4em] italic">No hay misiones activas</p>
@@ -136,8 +172,3 @@ export const Tasks = () => {
     );
 };
 
-const X = ({ className }: { className?: string }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-);

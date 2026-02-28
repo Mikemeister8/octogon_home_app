@@ -131,6 +131,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (compRes.data) setCompletions(compRes.data);
                 if (remRes.data) setReminders(remRes.data);
                 if (shopRes.data) setShoppingItems(shopRes.data);
+
+                const { data: dbRes } = await supabase.from('shopping_database').select('*').eq('household_id', profile.household_id);
+                if (dbRes) setShoppingConcepts(dbRes);
             }
         } catch (e) {
             console.error(e);
@@ -150,6 +153,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         users,
         loading,
+        shoppingConcepts,
 
         tasks,
         addTask: async (t) => {
@@ -207,9 +211,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateWeeklyMenu: async (m) => { setWeeklyMenus(p => p.map(x => x.id === m.id ? m : x)); },
         deleteWeeklyMenu: async (id) => { setWeeklyMenus(p => p.filter(x => x.id !== id)); },
 
-        shoppingConcepts,
-        addShoppingConcept: async (name) => { setShoppingConcepts(p => [...p, { id: Math.random().toString(), name }]); },
-        deleteShoppingConcept: async (id) => { setShoppingConcepts(p => p.filter(x => x.id !== id)); },
+        addShoppingConcept: async (name) => {
+            if (!homeSettings) return;
+            const { data, error } = await supabase.from('shopping_database').insert({ name, household_id: homeSettings.id }).select().single();
+            if (data && !error) setShoppingConcepts(prev => [...prev, data]);
+        },
+        deleteShoppingConcept: async (id) => {
+            await supabase.from('shopping_database').delete().eq('id', id);
+            setShoppingConcepts(prev => prev.filter(x => x.id !== id));
+        },
 
         generateInviteId: async () => {
             if (!homeSettings) return '';

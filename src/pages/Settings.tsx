@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2 } from 'lucide-react';
 import { ICONS } from '../utils/icons';
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#00FF88', '#FF5D00'];
@@ -11,6 +11,7 @@ export const Settings = () => {
         tokenName, setTokenName,
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
+        shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
         generateInviteId, logout, loading
     } = useAppContext();
 
@@ -22,6 +23,7 @@ export const Settings = () => {
     const [userName, setUserName] = useState(currentUser?.full_name || '');
     const [userColor, setUserColor] = useState(currentUser?.color_hex || COLORS[0]);
     const [userTheme, setUserTheme] = useState(currentUser?.theme || 'cyber');
+    const [newConcept, setNewConcept] = useState('');
 
     const [savedSection, setSavedSection] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -83,6 +85,13 @@ export const Settings = () => {
             notifySaved('profile');
         }
         setIsSaving(false);
+    };
+
+    const handleAddConcept = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newConcept.trim()) return;
+        await addShoppingConcept(newConcept.trim());
+        setNewConcept('');
     };
 
     return (
@@ -284,6 +293,48 @@ export const Settings = () => {
                                 <Save className="w-4 h-4" /> Copiar Enlace
                             </button>
                         </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Shopping Database Section */}
+            <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-10 shadow-2xl space-y-8">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-primary/10 rounded-3xl">
+                        <Palette className="w-8 h-8 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Base de Datos de Alimentos</h2>
+                        <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest">Sugerencias inteligentes para la compra</p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleAddConcept} className="flex gap-4">
+                    <input
+                        value={newConcept}
+                        onChange={e => setNewConcept(e.target.value)}
+                        placeholder="Añadir nuevo alimento (ej: Leche, Tomates...)"
+                        className="flex-1 bg-foreground/5 border border-foreground/10 rounded-2xl px-6 py-4 text-foreground font-bold focus:outline-none focus:border-primary transition-all"
+                    />
+                    <button type="submit" className="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-lg hover:shadow-primary/30 active:scale-95 transition-all">
+                        <Plus className="w-6 h-6" />
+                    </button>
+                </form>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {shoppingConcepts.map(concept => (
+                        <div key={concept.id} className="group flex items-center justify-between p-4 bg-foreground/5 border border-foreground/10 rounded-2xl hover:border-primary/30 transition-all">
+                            <span className="text-xs font-bold truncate pr-2 uppercase tracking-tighter">{concept.name}</span>
+                            <button
+                                onClick={() => deleteShoppingConcept(concept.id)}
+                                className="p-2 text-text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    ))}
+                    {shoppingConcepts.length === 0 && (
+                        <p className="col-span-full py-10 text-center text-text-dim font-bold italic opacity-40">No hay alimentos en la base de datos</p>
                     )}
                 </div>
             </div>
