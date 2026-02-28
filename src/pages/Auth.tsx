@@ -87,7 +87,7 @@ export const Auth = () => {
                     <h1 className="text-4xl font-black tracking-tighter uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-br from-primary to-accent">
                         Octogon Home
                     </h1>
-                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • v2.0</p>
+                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • v2.0.3</p>
                 </div>
 
                 <div className="bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -220,7 +220,7 @@ export const Auth = () => {
                                     <Zap className="text-primary w-6 h-6" />
                                     Iniciar Sesión
                                 </div>
-                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-50">Auth Protocol v2.0</span>
+                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-50">Auth Protocol v2.0.3</span>
                             </h2>
                             <div className="space-y-4">
                                 <div className="space-y-2">

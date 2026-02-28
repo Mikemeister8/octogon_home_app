@@ -70,9 +70,7 @@ const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-foreground truncate uppercase tracking-tight">{currentUser.full_name}</p>
-            <p className="mt-6 text-[8px] font-black text-text-dim uppercase tracking-[0.6em] opacity-30">
-              Octogon Home Hub v2.0 • SECURITY HANDSHAKE
-            </p>
+            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">Online Hub v2.0.3</p>
           </div>
         </div>
 
@@ -162,7 +160,7 @@ const AppContent = () => {
         <div className="text-center space-y-3">
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
           <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
-          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Conexión Segura v2.0 • Sincronizando</p>
+          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Conexión Segura v2.0.3 • Sincronizando</p>
         </div>
       </div>
     );
