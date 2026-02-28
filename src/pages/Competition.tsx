@@ -52,21 +52,21 @@ export const Competition = () => {
                             <span className="text-xs font-black text-yellow-500/60 uppercase ml-2">{tokenName}</span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-8 mt-10 w-full max-w-sm border-t border-foreground/5 pt-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-10 w-full max-w-sm border-t border-foreground/5 pt-8">
                             <div className="flex flex-col items-center">
                                 <Target className="w-5 h-5 text-text-dim mb-1" />
-                                <span className="text-xs font-black uppercase text-text-dim">Eficacia</span>
-                                <span className="text-lg font-black text-foreground">100%</span>
+                                <span className="text-[10px] font-black uppercase text-text-dim">Eficacia</span>
+                                <span className="text-lg font-black text-foreground font-mono">100%</span>
                             </div>
-                            <div className="flex flex-col items-center border-x border-foreground/5">
+                            <div className="flex flex-col items-center border-y sm:border-y-0 sm:border-x border-foreground/5 py-4 sm:py-0">
                                 <Star className="w-5 h-5 text-yellow-500 mb-1" />
-                                <span className="text-xs font-black uppercase text-text-dim">Nivel</span>
-                                <span className="text-lg font-black text-foreground">Gold</span>
+                                <span className="text-[10px] font-black uppercase text-text-dim">Nivel</span>
+                                <span className="text-lg font-black text-foreground font-mono uppercase">Gold</span>
                             </div>
                             <div className="flex flex-col items-center">
                                 <CheckCircle2 className="w-5 h-5 text-green-500 mb-1" />
-                                <span className="text-xs font-black uppercase text-text-dim">Racha</span>
-                                <span className="text-lg font-black text-foreground">7 Días</span>
+                                <span className="text-[10px] font-black uppercase text-text-dim">Racha</span>
+                                <span className="text-lg font-black text-foreground font-mono">7D</span>
                             </div>
                         </div>
                     </div>

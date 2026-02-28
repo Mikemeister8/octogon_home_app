@@ -48,7 +48,7 @@ const Sidebar = () => {
         </div>
         <div className="text-center relative z-10 space-y-1">
           <h2 className="text-2xl font-black tracking-tight" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
-          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase">Control Total • v2.0.4</span>
+          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase">OCTOGON HOME APP • v2.0.5</span>
         </div>
       </div>
 
@@ -78,7 +78,7 @@ const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-foreground truncate uppercase tracking-tight">{currentUser.full_name}</p>
-            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">Online Hub v2.0.4</p>
+            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">OCTOGON HOME APP v2.0.5</p>
           </div>
         </div>
 
@@ -109,28 +109,29 @@ const MobileNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-panel/80 backdrop-blur-2xl border-t border-foreground/5 lg:hidden z-50 px-4 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-      <div className="flex justify-between items-center h-20 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-panel/95 backdrop-blur-xl border-t border-foreground/5 lg:hidden z-50 px-2 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center w-14 h-14 transition-all duration-300 rounded-2xl ${isActive ? 'bg-primary/20 text-primary' : 'text-text-dim/60 grayscale'
+              className={`flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ${isActive ? 'text-primary' : 'text-text-dim/40'
                 }`}
             >
-              <item.icon className={`w-6 h-6 ${isActive ? 'scale-110' : 'scale-100 opacity-60'}`} />
-              {isActive && <span className="text-[8px] font-black uppercase tracking-widest mt-1 animate-in fade-in slide-in-from-bottom-1">{item.label}</span>}
+              <item.icon className={`w-5 h-5 ${isActive ? 'scale-110' : 'scale-100'}`} />
+              <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
             </Link>
           );
         })}
         <Link
           to="/settings"
-          className={`flex flex-col items-center justify-center w-14 h-14 transition-all duration-300 rounded-2xl ${location.pathname === '/settings' ? 'bg-primary/20 text-primary' : 'text-text-dim/60 grayscale'
+          className={`flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'
             }`}
         >
-          <SettingsIcon className={`w-6 h-6 ${location.pathname === '/settings' ? 'scale-110' : 'scale-100 opacity-60'}`} />
+          <SettingsIcon className={`w-5 h-5 ${location.pathname === '/settings' ? 'scale-110' : 'scale-100'}`} />
+          <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
         </Link>
       </div>
     </nav>
@@ -160,7 +161,7 @@ const AppContent = () => {
         <div className="text-center space-y-3">
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
           <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
-          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Conexión Segura v2.0.4 • Sincronizando</p>
+          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">OCTOGON HOME APP v2.0.5</p>
         </div>
       </div>
     );

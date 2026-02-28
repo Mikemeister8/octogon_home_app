@@ -35,10 +35,15 @@ export const Auth = () => {
             if (authError) throw authError;
             if (!authData.user) throw new Error("No se pudo crear el usuario.");
 
-            // 2. Create Household
+            // 2. Create Household with defaults so it doesn't "reset" later
             const { data: household, error: hError } = await supabase
                 .from('households')
-                .insert({ name: homeName, token_name: 'Puntos' })
+                .insert({
+                    name: homeName,
+                    token_name: 'Puntos',
+                    logo: 'Home',
+                    themeColor: '#00FF88'
+                })
                 .select()
                 .single();
 

@@ -37,12 +37,12 @@ export const Dashboards = () => {
                     </div>
                 </div>
 
-                <div className="flex bg-foreground/5 p-1.5 rounded-2xl border border-foreground/10 relative z-10">
+                <div className="flex flex-wrap bg-foreground/5 p-1.5 rounded-2xl border border-foreground/10 relative z-10 w-full sm:w-auto overflow-hidden">
                     {(['month', 'year', 'total'] as FilterType[]).map((f) => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${filter === f ? 'bg-primary text-white shadow-xl' : 'text-text-dim hover:bg-foreground/5 hover:text-foreground'}`}
+                            className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${filter === f ? 'bg-primary text-white shadow-xl' : 'text-text-dim hover:bg-foreground/5 hover:text-foreground'}`}
                         >
                             {f === 'month' ? 'Mes' : f === 'year' ? 'Año' : 'Histórico'}
                         </button>
