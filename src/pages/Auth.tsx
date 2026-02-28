@@ -14,6 +14,8 @@ export const Auth = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [needsVerification, setNeedsVerification] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,6 +66,46 @@ export const Auth = () => {
         }
     };
 
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error: verifyError } = await supabase.auth.verifyOtp({
+                email,
+                token: otpCode,
+                type: 'signup',
+            });
+
+            if (verifyError) throw verifyError;
+
+            // Redirect will happen automatically if session is set
+            window.location.reload();
+        } catch (err: any) {
+            setError(err.message || 'Código inválido');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResend = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { error: resendError } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+            });
+            if (resendError) throw resendError;
+            alert("Nuevo código enviado!");
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -87,7 +129,7 @@ export const Auth = () => {
                     <h1 className="text-4xl font-black tracking-tighter uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-br from-primary to-accent">
                         Octogon Home
                     </h1>
-                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • v2.0.3</p>
+                    <p className="text-text-dim text-[10px] font-bold tracking-[0.4em] uppercase">Control Total • v2.0.4</p>
                 </div>
 
                 <div className="bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -107,19 +149,49 @@ export const Auth = () => {
                             <div className="space-y-3">
                                 <h2 className="text-2xl font-black text-foreground uppercase italic tracking-tight">¡Casi listo!</h2>
                                 <p className="text-sm text-text-dim font-medium italic text-balance">
-                                    Hemos enviado un enlace de confirmación a <span className="text-primary font-bold">{email}</span>.
-                                    Por favor, revisa tu bandeja de entrada.
+                                    Hemos enviado un código de confirmación a <span className="text-primary font-bold">{email}</span>.
                                 </p>
                             </div>
+
+                            <form onSubmit={handleVerifyOtp} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Introduce el Código de 6 Dígitos</label>
+                                    <input
+                                        required
+                                        maxLength={6}
+                                        value={otpCode}
+                                        onChange={e => setOtpCode(e.target.value)}
+                                        className="w-full bg-foreground/5 border border-primary/30 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.5em] focus:outline-none focus:border-primary transition-all text-primary"
+                                        placeholder="000000"
+                                    />
+                                </div>
+                                <button
+                                    disabled={loading}
+                                    className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verificar Email"}
+                                </button>
+                            </form>
+
                             <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
-                                <p>IMPORTANTE: Si el enlace te da error, asegúrate de que el 'Site URL' en el Dashboard de Supabase apunte a tu nueva URL de Vercel.</p>
+                                <p>Sugerencia: Si no recibes el mail, revisa Spam o utiliza el botón inferior para reenviar el código.</p>
                             </div>
-                            <button
-                                onClick={() => { setNeedsVerification(false); setView('login'); }}
-                                className="w-full py-4 bg-foreground/5 hover:bg-foreground/10 text-foreground border border-foreground/10 rounded-2xl font-bold transition-all text-sm uppercase tracking-widest"
-                            >
-                                Volver al Iniciar Sesión
-                            </button>
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={handleResend}
+                                    disabled={loading}
+                                    className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-primary transition-colors"
+                                >
+                                    Reenviar Código
+                                </button>
+                                <button
+                                    onClick={() => { setNeedsVerification(false); setView('login'); }}
+                                    className="w-full py-4 bg-foreground/5 hover:bg-foreground/10 text-foreground border border-foreground/10 rounded-2xl font-bold transition-all text-sm uppercase tracking-widest"
+                                >
+                                    Volver al Iniciar Sesión
+                                </button>
+                            </div>
                         </div>
                     ) : view === 'welcome' ? (
                         <div className="space-y-6 relative z-10">
@@ -220,7 +292,7 @@ export const Auth = () => {
                                     <Zap className="text-primary w-6 h-6" />
                                     Iniciar Sesión
                                 </div>
-                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-50">Auth Protocol v2.0.3</span>
+                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-50">Auth Protocol v2.0.4</span>
                             </h2>
                             <div className="space-y-4">
                                 <div className="space-y-2">

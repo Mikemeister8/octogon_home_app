@@ -40,7 +40,7 @@ const Sidebar = () => {
         </div>
         <div className="text-center relative z-10 space-y-1">
           <h2 className="text-2xl font-black tracking-tight" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim opacity-50">Control Central</span>
+          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase">Control Total • v2.0.4</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-foreground truncate uppercase tracking-tight">{currentUser.full_name}</p>
-            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">Online Hub v2.0.3</p>
+            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">Online Hub v2.0.4</p>
           </div>
         </div>
 
@@ -160,7 +160,7 @@ const AppContent = () => {
         <div className="text-center space-y-3">
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
           <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
-          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Conexión Segura v2.0.3 • Sincronizando</p>
+          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">Conexión Segura v2.0.4 • Sincronizando</p>
         </div>
       </div>
     );
