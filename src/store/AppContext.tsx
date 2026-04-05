@@ -49,7 +49,7 @@ interface AppState {
     logout: () => Promise<void>;
     loading: boolean;
     needsProfileSetup: string | null;
-    setupProfile: (userId: string, name: string, householdName: string) => Promise<void>;
+    setupProfile: (userId: string, name: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppState | null>(null);
@@ -189,15 +189,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         loading,
         needsProfileSetup,
-        setupProfile: async (userId, name, householdName) => {
-            // Create household then profile for users whose profile INSERT failed at registration
-            const { data: household } = await supabase
-                .from('households')
-                .insert({ name: householdName || 'Mi Hogar', token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
-                .select().single();
-            if (!household) return;
+        setupProfile: async (userId, name) => {
+            // Try to get the pending invite from sessionStorage to join the right household
+            const pendingInvite = sessionStorage.getItem('pendingInvite');
+            let householdId: string | null = null;
+
+            if (pendingInvite) {
+                const { data: inviteHome } = await supabase
+                    .from('households')
+                    .select('id')
+                    .eq('householdInvitationId', pendingInvite)
+                    .single();
+                if (inviteHome) {
+                    householdId = inviteHome.id;
+                    sessionStorage.removeItem('pendingInvite');
+                }
+            }
+
+            if (!householdId) {
+                // No invite - create a brand new household
+                const { data: household } = await supabase
+                    .from('households')
+                    .insert({ name: name + "'s Home", token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
+                    .select().single();
+                if (!household) return;
+                householdId = household.id;
+            }
+
             await supabase.from('profiles').insert({
-                id: userId, household_id: household.id, full_name: name,
+                id: userId, household_id: householdId, full_name: name,
                 avatar_url: '', color_hex: '#00FF88', theme: 'cyber'
             });
             setNeedsProfileSetup(null);
@@ -282,7 +302,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         joinHouseholdLink: async (inviteId) => {
             const { data: household } = await supabase.from('households').select('id').eq('householdInvitationId', inviteId).single();
             if (household && currentUser) {
-                await supabase.from('profiles').update({ household_id: household.id }).eq('id', currentUser.id);
+                await supabase.from('profiles').upsert({ // User upsert to avoid issues
+                    id: currentUser.id,
+                    household_id: household.id,
+                    full_name: currentUser.full_name || 'Nuevo Miembro',
+                    avatar_url: currentUser.avatar_url || '',
+                    color_hex: currentUser.color_hex || '#00FF88',
+                    theme: currentUser.theme || 'cyber'
+                });
                 fetchUserData(currentUser.id);
             }
         },

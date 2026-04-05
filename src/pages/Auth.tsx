@@ -41,8 +41,6 @@ export const Auth = () => {
             if (pendingInvite) {
                 const { data: inviteHome } = await supabase.from('households').select('id').eq('householdInvitationId', pendingInvite).single();
                 if (inviteHome) finalHouseholdId = inviteHome.id;
-                // clear it once used
-                sessionStorage.removeItem('pendingInvite');
             }
 
             if (!finalHouseholdId) {
@@ -50,7 +48,7 @@ export const Auth = () => {
                 const { data: household, error: hError } = await supabase
                     .from('households')
                     .insert({
-                        name: homeName,
+                        name: homeName || (userName + "'s Home"),
                         token_name: 'Puntos',
                         logo: 'Home',
                         themeColor: '#00FF88'
@@ -65,7 +63,7 @@ export const Auth = () => {
             // 3. Create Profile
             const { error: pError } = await supabase
                 .from('profiles')
-                .insert({
+                .upsert({ // Use upsert instead of insert
                     id: authData.user.id,
                     household_id: finalHouseholdId,
                     full_name: userName,
@@ -75,6 +73,9 @@ export const Auth = () => {
                 });
 
             if (pError) throw pError;
+
+            // Success! Now we can clear the invite
+            if (pendingInvite) sessionStorage.removeItem('pendingInvite');
 
             // If Supabase auto-confirmed the email, session is set immediately - go to home!
             const { data: { session } } = await supabase.auth.getSession();
@@ -256,7 +257,7 @@ export const Auth = () => {
                         <form onSubmit={handleRegister} className="space-y-5 relative z-10">
                             <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
                                 <Home className="text-primary w-6 h-6" />
-                                Nuevo Hogar
+                                {pendingInvite ? 'Unirse al Hogar' : 'Nuevo Hogar'}
                             </h2>
 
                             <div className="space-y-4">
@@ -286,7 +287,7 @@ export const Auth = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px) font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
                                         <input
                                             required
                                             value={userName} onChange={e => setUserName(e.target.value)}
