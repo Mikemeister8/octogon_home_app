@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../store/AppContext';
-import { UserPlus, ArrowRight, Loader2, ShieldCheck, Sparkles, Laptop, Moon } from 'lucide-react';
+import { UserPlus, ArrowRight, Loader2, ShieldCheck, Sparkles, Laptop, Moon, AlertTriangle } from 'lucide-react';
 
 export const JoinHousehold = () => {
     const { inviteId } = useParams();
     const { joinSpaceByInviteLink, currentUser, loading } = useAppContext();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<'joining' | 'success' | 'checking'>('checking');
+    const [status, setStatus] = useState<'joining' | 'success' | 'checking' | 'error'>('checking');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const join = async () => {
@@ -18,9 +19,10 @@ export const JoinHousehold = () => {
                     await joinSpaceByInviteLink(inviteId);
                     console.log("JOIN FLOW COMPLETED for existing user.");
                     setStatus('success');
-                } catch (err) {
+                } catch (err: any) {
                     console.error("Error joining household:", err);
-                    setStatus('checking');
+                    setError(err.message || "No se ha podido vincular el hogar. Comprueba que el código es correcto.");
+                    setStatus('error');
                 }
             } else if (!loading && !currentUser) {
                 console.log("INVITE ID RECIBIDO en Link:", inviteId);
@@ -31,7 +33,28 @@ export const JoinHousehold = () => {
         join();
     }, [inviteId, joinSpaceByInviteLink, currentUser, loading, navigate]);
 
-    if (loading || status === 'joining' || status === 'checking') {
+    if (status === 'error') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground">
+                <div className="max-w-md w-full bg-panel border border-red-500/20 rounded-[3rem] p-10 text-center space-y-6 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-24 h-24 bg-red-500/5 blur-3xl rounded-full" />
+                    <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle className="w-10 h-10 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-black text-foreground uppercase italic leading-tight">Error de Vinculación</h2>
+                    <p className="text-text-dim text-sm font-medium italic">{error}</p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="w-full py-5 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-2xl font-black transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-widest mt-4"
+                    >
+                        Volver al inicio
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading || status === 'joining' || (status === 'checking' && inviteId && currentUser)) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background text-foreground space-y-8">
                 <div className="relative">

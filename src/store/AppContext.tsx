@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type {
     Task, TaskCompletion, User, HomeSettings, Reminder,
     ShoppingItem, WeeklyMenu, ShoppingConcept
@@ -188,7 +188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const value: AppState = {
+    const value: AppState = useMemo(() => ({
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings: (s) => setHomeSettings(s),
         tokenName: homeSettings?.token_name || 'Puntos',
@@ -207,13 +207,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log("SETUP PROFILE - Invite found in localStorage:", pendingInvite);
                 if (!pendingInvite) throw new Error("No se encontró ninguna invitación pendiente.");
 
-                const { data: allHomes } = await supabase.from('households').select('*');
-                const inviteHome = (allHomes || []).find(h => 
-                    h.household_invitation_id === pendingInvite || 
-                    h.householdInvitationId === pendingInvite
-                );
+                // Search precisely for the invitation ID
+                const { data: inviteHome, error: fetchError } = await supabase
+                    .from('households')
+                    .select('*')
+                    .or(`household_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
+                    .maybeSingle();
 
-                if (!inviteHome) throw new Error("La invitación ya no es válida o el hogar no existe.");
+                if (fetchError || !inviteHome) throw new Error("La invitación ya no es válida o el hogar no existe.");
 
                 const { error: profileError } = await supabase.from('profiles').upsert({
                     id: userId, 
@@ -283,11 +284,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         joinSpaceByInviteLink: async (inviteId: string) => {
             console.log("MANUAL JOIN START - Invite:", inviteId);
-            const { data: allHomes } = await supabase.from('households').select('*');
-            const inviteHome = (allHomes || []).find(h => 
-                h.household_invitation_id === inviteId || 
-                h.householdInvitationId === inviteId
-            );
+            
+            // Search precisely for the invitation ID
+            const { data: inviteHome, error: fetchError } = await supabase
+                .from('households')
+                .select('*')
+                .or(`household_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
+                .maybeSingle();
 
             if (inviteHome && currentUser) {
                 const { error } = await supabase.from('profiles').upsert({
@@ -298,6 +301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (!error) await fetchUserData(currentUser.id);
                 else throw error;
             } else if (!inviteHome) {
+                if (fetchError) console.error("Fetch Home Error:", fetchError);
                 throw new Error("No se encontró ningún hogar con ese código.");
             }
         },
@@ -384,7 +388,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCompletions([]);
             setShoppingItems([]);
         }
-    };
+    }), [currentUser, homeSettings, users, loading, needsProfileSetup, shoppingConcepts, tasks, completions, reminders, shoppingItems, weeklyMenus]);
 
     return (
         <AppContext.Provider value={value}>
