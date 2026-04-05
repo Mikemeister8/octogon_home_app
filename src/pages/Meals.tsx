@@ -95,7 +95,8 @@ export const Meals = () => {
         const promises = Array.from(map.entries()).map(([name, qty]) => {
             // we uppercase first letter for niceness
             const niceName = name.charAt(0).toUpperCase() + name.slice(1);
-            return addShoppingItem(niceName, qty, currentUser.id);
+            const finalName = qty > 1 ? `${qty}x ${niceName}` : niceName;
+            return addShoppingItem(finalName, currentUser.id);
         });
 
         await Promise.all(promises);

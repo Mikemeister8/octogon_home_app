@@ -35,7 +35,8 @@ export const Shopping = () => {
             await addShoppingConcept(name.trim());
         }
 
-        await addShoppingItem(name.trim(), quantity, currentUser.id);
+        const finalName = quantity > 1 ? `${quantity}x ${name.trim()}` : name.trim();
+        await addShoppingItem(finalName, currentUser.id);
         setNewItem('');
         setQuantity(1);
         setSuggestions([]);
@@ -117,21 +118,20 @@ export const Shopping = () => {
                     <span className="bg-primary/20 text-primary text-[10px] font-black px-3 py-1 rounded-full">{activeItems.length}</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                     {activeItems.length > 0 ? activeItems.map(item => (
-                        <div key={item.id} className="bg-panel border border-foreground/10 p-5 rounded-2xl flex items-center gap-4 hover:border-primary/30 group shadow-sm">
+                        <div key={item.id} className="bg-panel border border-foreground/10 p-4 rounded-2xl flex items-center gap-4 hover:border-primary/30 group shadow-sm transition-all animate-in fade-in zoom-in slide-in-from-top-2">
                             <button
                                 onClick={() => toggleBought(item)}
-                                className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center shrink-0"
+                                className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors"
                             >
-                                <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20" />
+                                <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20 transition-opacity" />
                             </button>
-                            <div className="flex-1 min-w-0 flex items-center gap-2">
-                                <span className="bg-foreground/5 text-text-dim px-2 py-0.5 rounded text-xs font-bold shrink-0">{item.quantity || 1}x</span>
-                                <span className="text-foreground font-black tracking-tight truncate">{item.name}</span>
+                            <div className="flex-1 min-w-0 flex items-center gap-3">
+                                <span className="text-foreground font-black text-lg tracking-tight truncate block w-full">{item.name}</span>
                             </div>
-                            <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 opacity-40 hover:opacity-100">
-                                <Trash2 className="w-4 h-4" />
+                            <button onClick={() => deleteShoppingItem(item.id)} className="p-3 text-text-dim hover:text-red-500 hover:bg-red-500/10 rounded-xl opacity-40 hover:opacity-100 transition-all shrink-0">
+                                <Trash2 className="w-5 h-5" />
                             </button>
                         </div>
                     )) : (
