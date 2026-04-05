@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { Home, User, ArrowRight, Sparkles, ShieldCheck, Laptop, Moon, Zap, Mail, Lock, Loader2 } from 'lucide-react';
 
 export const Auth = () => {
-    const [view, setView] = useState<'welcome' | 'register' | 'login'>('welcome');
+    const pendingInvite = sessionStorage.getItem('pendingInvite');
+    const [view, setView] = useState<'welcome' | 'register' | 'login'>(pendingInvite ? 'register' : 'welcome');
 
     // Form fields
     const [email, setEmail] = useState('');
@@ -16,7 +17,7 @@ export const Auth = () => {
     const [needsVerification, setNeedsVerification] = useState(false);
     const [otpCode, setOtpCode] = useState('');
     
-    const pendingInvite = sessionStorage.getItem('pendingInvite');
+    // Already read from sessionStorage at the top
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
