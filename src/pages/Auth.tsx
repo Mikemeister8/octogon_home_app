@@ -15,7 +15,8 @@ export const Auth = () => {
     const [error, setError] = useState<string | null>(null);
     const [needsVerification, setNeedsVerification] = useState(false);
     const [otpCode, setOtpCode] = useState('');
-
+    
+    const pendingInvite = sessionStorage.getItem('pendingInvite');
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,26 +36,38 @@ export const Auth = () => {
             if (authError) throw authError;
             if (!authData.user) throw new Error("No se pudo crear el usuario.");
 
-            // 2. Create Household with defaults so it doesn't "reset" later
-            const { data: household, error: hError } = await supabase
-                .from('households')
-                .insert({
-                    name: homeName,
-                    token_name: 'Puntos',
-                    logo: 'Home',
-                    themeColor: '#00FF88'
-                })
-                .select()
-                .single();
+            let finalHouseholdId = null;
 
-            if (hError) throw hError;
+            if (pendingInvite) {
+                const { data: inviteHome } = await supabase.from('households').select('id').eq('householdInvitationId', pendingInvite).single();
+                if (inviteHome) finalHouseholdId = inviteHome.id;
+                // clear it once used
+                sessionStorage.removeItem('pendingInvite');
+            }
+
+            if (!finalHouseholdId) {
+                // 2. Create Household with defaults if no invite is present
+                const { data: household, error: hError } = await supabase
+                    .from('households')
+                    .insert({
+                        name: homeName,
+                        token_name: 'Puntos',
+                        logo: 'Home',
+                        themeColor: '#00FF88'
+                    })
+                    .select()
+                    .single();
+
+                if (hError) throw hError;
+                finalHouseholdId = household.id;
+            }
 
             // 3. Create Profile
             const { error: pError } = await supabase
                 .from('profiles')
                 .insert({
                     id: authData.user.id,
-                    household_id: household.id,
+                    household_id: finalHouseholdId,
                     full_name: userName,
                     avatar_url: '',
                     color_hex: '#00FF88',
@@ -201,8 +214,8 @@ export const Auth = () => {
                     ) : view === 'welcome' ? (
                         <div className="space-y-6 relative z-10">
                             <div className="space-y-2">
-                                <h2 className="text-2xl font-bold">¡Empieza hoy!</h2>
-                                <p className="text-text-dim text-sm italic">Organiza tareas, compras y agenda familiar en un solo lugar.</p>
+                                <h2 className="text-2xl font-bold">{pendingInvite ? '¡Te han invitado!' : '¡Empieza hoy!'}</h2>
+                                <p className="text-text-dim text-sm italic">{pendingInvite ? 'Crea tu perfil o inicia sesión para unirte al hogar.' : 'Organiza tareas, compras y agenda familiar en un solo lugar.'}</p>
                             </div>
 
                             <div className="grid gap-4">
@@ -211,7 +224,7 @@ export const Auth = () => {
                                     className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 active:scale-95"
                                 >
                                     <Sparkles className="w-5 h-5" />
-                                    Crear Nuevo Hogar
+                                    {pendingInvite ? 'Registrarme y Unirme' : 'Crear Nuevo Hogar'}
                                 </button>
                                 <button
                                     onClick={() => setView('login')}
@@ -271,19 +284,21 @@ export const Auth = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Nombre del Hogar</label>
-                                    <input
-                                        required
-                                        value={homeName} onChange={e => setHomeName(e.target.value)}
-                                        className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                                        placeholder="Ej: Familia García"
-                                    />
-                                </div>
+                                {!pendingInvite && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Nombre del Hogar</label>
+                                        <input
+                                            required
+                                            value={homeName} onChange={e => setHomeName(e.target.value)}
+                                            className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
+                                            placeholder="Ej: Familia García"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <button disabled={loading} className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> Crear Hogar</>}
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {pendingInvite ? 'Unirme al Hogar' : 'Crear Hogar'}</>}
                             </button>
 
                             <button type="button" onClick={() => setView('welcome')} className="w-full text-center text-sm text-text-dim hover:text-foreground">
