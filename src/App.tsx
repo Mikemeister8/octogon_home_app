@@ -173,6 +173,8 @@ const AppContent = () => {
 
   if (needsProfileSetup) {
     const pendingInvite = sessionStorage.getItem('pendingInvite');
+    console.log("USUARIO ACTUAL (Necesita Setup):", needsProfileSetup);
+    console.log("PENDING INVITE en UI Setup:", pendingInvite);
     
     const handleSetup = async (e: React.FormEvent) => {
       e.preventDefault();

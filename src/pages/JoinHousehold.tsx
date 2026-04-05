@@ -12,10 +12,13 @@ export const JoinHousehold = () => {
     useEffect(() => {
         const join = async () => {
             if (inviteId && currentUser) {
+                console.log("JOIN START - Logged In User:", currentUser.id, "Invite:", inviteId);
                 setStatus('joining');
                 await joinHouseholdLink(inviteId);
+                console.log("JOIN FLOW COMPLETED for existing user.");
                 setStatus('success');
             } else if (!loading && !currentUser) {
+                console.log("INVITE ID RECIBIDO en Link:", inviteId);
                 sessionStorage.setItem('pendingInvite', inviteId || '');
                 navigate('/auth');
             }

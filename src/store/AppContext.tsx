@@ -122,24 +122,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (pError || !profile) {
                 // Profile missing - can we create it automatically?
                 const pendingInvite = sessionStorage.getItem('pendingInvite');
+                console.log("FETCH USER DATA - Pending Invite found in session:", pendingInvite);
+                
                 if (pendingInvite) {
-                    // Ultra-robust search in JS to avoid "column not found" PostgREST errors
-                    const { data: allHomes } = await supabase.from('households').select('*');
+                    // Ultra-robust search in JS
+                    const { data: allHomes, error: homesErr } = await supabase.from('households').select('*');
+                    console.log("INVITE EN BD - Todos los hogares encontrados:", allHomes?.length || 0);
+                    if (homesErr) console.error("Error fetching homes:", homesErr);
+
                     const inviteHome = (allHomes || []).find(h => 
                         h.household_invitation_id === pendingInvite || 
                         h.householdInvitationId === pendingInvite
                     );
+                    
+                    console.log("INVITE EN BD - Match encontrado:", inviteHome ? inviteHome.id : 'NINGUNO');
 
                     if (inviteHome) {
-                        // Create profile silently
-                        await supabase.from('profiles').upsert({
+                        console.log("SPACE ID OBTENIDO:", inviteHome.id);
+                        // Create profile silently if we can
+                        const { error: joinErr } = await supabase.from('profiles').upsert({
                             id: userId,
                             household_id: inviteHome.id,
                             full_name: 'Nuevo Miembro'
                         });
-                        sessionStorage.removeItem('pendingInvite');
-                        // Retry fetch
-                        return fetchUserData(userId);
+                        
+                        console.log("RESULTADO JOIN Silencioso:", joinErr ? "ERROR: " + joinErr.message : "EXITO");
+                        
+                        if (!joinErr) {
+                            sessionStorage.removeItem('pendingInvite');
+                            return fetchUserData(userId);
+                        }
                     }
                 }
 
@@ -223,15 +235,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loading,
         needsProfileSetup,
         setupProfile: async (userId, name) => {
+            console.log("SETUP PROFILE START - User:", userId, "Name:", name);
             try {
                 const pendingInvite = sessionStorage.getItem('pendingInvite');
+                console.log("SETUP PROFILE - Invite found:", pendingInvite);
                 if (!pendingInvite) throw new Error("No se encontró ninguna invitación pendiente.");
 
                 const { data: allHomes } = await supabase.from('households').select('*');
+                console.log("SETUP PROFILE - Cantidad de hogares visibles:", allHomes?.length || 0);
+                
                 const inviteHome = (allHomes || []).find(h => 
                     h.household_invitation_id === pendingInvite || 
                     h.householdInvitationId === pendingInvite
                 );
+
+                console.log("SETUP PROFILE - Match de hogar:", inviteHome ? inviteHome.id : 'NINGUNO');
 
                 if (!inviteHome) throw new Error("La invitación ya no es válida o el hogar no existe.");
 
@@ -240,6 +258,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     household_id: inviteHome.id, 
                     full_name: name || 'Nuevo Miembro'
                 });
+
+                console.log("SETUP PROFILE - Resultado Upsert Perfil:", profileError ? "ERROR: " + profileError.message : "EXITO");
 
                 if (profileError) throw profileError;
 
