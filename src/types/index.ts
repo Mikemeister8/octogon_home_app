@@ -34,9 +34,12 @@ export interface HomeSettings {
     id: string;
     name: string;
     logo?: string;
-    themeColor: string;
+    themeColor?: string;
+    theme_color?: string;
     householdInvitationId?: string;
-    token_name: string;
+    household_invitation_id?: string;
+    token_name?: string;
+    tokenName?: string;
 }
 
 export interface Reminder {

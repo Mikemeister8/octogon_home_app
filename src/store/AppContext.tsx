@@ -122,7 +122,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 // Profile missing - can we create it automatically?
                 const pendingInvite = sessionStorage.getItem('pendingInvite');
                 if (pendingInvite) {
-                    const { data: inviteHome } = await supabase.from('households').select('id').eq('householdInvitationId', pendingInvite).single();
+                    const { data: inviteHome } = await supabase
+                        .from('households')
+                        .select('id')
+                        .or(`household_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
+                        .single();
                     if (inviteHome) {
                         // Create profile silently
                         await supabase.from('profiles').upsert({
@@ -344,20 +348,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         generateInviteId: async () => {
             if (!homeSettings) return '';
             const id = Math.random().toString(36).substr(2, 9);
-            await supabase.from('households').update({ householdInvitationId: id }).eq('id', homeSettings.id);
+            // Try both to be sure
+            await supabase.from('households').update({ 
+                [homeSettings.household_invitation_id !== undefined ? 'household_invitation_id' : 'householdInvitationId']: id 
+            }).eq('id', homeSettings.id);
             setHomeSettings({ ...homeSettings, householdInvitationId: id });
             return id;
         },
         joinHouseholdLink: async (inviteId) => {
-            const { data: household } = await supabase.from('households').select('id').eq('householdInvitationId', inviteId).single();
+            const { data: household } = await supabase.from('households')
+                .select('id')
+                .or(`household_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
+                .single();
             if (household && currentUser) {
                 await supabase.from('profiles').upsert({ // User upsert to avoid issues
                     id: currentUser.id,
                     household_id: household.id,
-                    full_name: currentUser.full_name || 'Nuevo Miembro',
-                    avatar_url: currentUser.avatar_url || '',
-                    color_hex: currentUser.color_hex || '#00FF88',
-                    theme: currentUser.theme || 'cyber'
+                    full_name: currentUser.full_name || 'Nuevo Miembro'
                 });
                 fetchUserData(currentUser.id);
             }
