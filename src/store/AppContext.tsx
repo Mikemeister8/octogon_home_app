@@ -53,16 +53,27 @@ interface AppState {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [homeSettings, setHomeSettings] = useState<HomeSettings | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [completions, setCompletions] = useState<TaskCompletion[]>([]);
-    const [reminders, setReminders] = useState<Reminder[]>([]);
-    const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+    const [currentUser, setCurrentUser] = useState<User | null>(() => JSON.parse(localStorage.getItem('octo_cache_user') || 'null'));
+    const [homeSettings, setHomeSettings] = useState<HomeSettings | null>(() => JSON.parse(localStorage.getItem('octo_cache_settings') || 'null'));
+    const [users, setUsers] = useState<User[]>(() => JSON.parse(localStorage.getItem('octo_cache_users') || '[]'));
+    const [tasks, setTasks] = useState<Task[]>(() => JSON.parse(localStorage.getItem('octo_cache_tasks') || '[]'));
+    const [completions, setCompletions] = useState<TaskCompletion[]>(() => JSON.parse(localStorage.getItem('octo_cache_comps') || '[]'));
+    const [reminders, setReminders] = useState<Reminder[]>(() => JSON.parse(localStorage.getItem('octo_cache_rems') || '[]'));
+    const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('octo_cache_shops') || '[]'));
     const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenu[]>([]);
-    const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>(() => JSON.parse(localStorage.getItem('octo_cache_concepts') || '[]'));
+    // If we have cached user and settings, we can bypass the initial loading screen instantly!
+    const [loading, setLoading] = useState(!(localStorage.getItem('octo_cache_user') && localStorage.getItem('octo_cache_settings')));
+
+    // Persist states to local storage automatically
+    useEffect(() => { if (currentUser) localStorage.setItem('octo_cache_user', JSON.stringify(currentUser)); else localStorage.removeItem('octo_cache_user'); }, [currentUser]);
+    useEffect(() => { if (homeSettings) localStorage.setItem('octo_cache_settings', JSON.stringify(homeSettings)); else localStorage.removeItem('octo_cache_settings'); }, [homeSettings]);
+    useEffect(() => { localStorage.setItem('octo_cache_users', JSON.stringify(users)); }, [users]);
+    useEffect(() => { localStorage.setItem('octo_cache_tasks', JSON.stringify(tasks)); }, [tasks]);
+    useEffect(() => { localStorage.setItem('octo_cache_comps', JSON.stringify(completions)); }, [completions]);
+    useEffect(() => { localStorage.setItem('octo_cache_rems', JSON.stringify(reminders)); }, [reminders]);
+    useEffect(() => { localStorage.setItem('octo_cache_shops', JSON.stringify(shoppingItems)); }, [shoppingItems]);
+    useEffect(() => { localStorage.setItem('octo_cache_concepts', JSON.stringify(shoppingConcepts)); }, [shoppingConcepts]);
 
     // Initial session load
     useEffect(() => {
@@ -91,7 +102,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const fetchUserData = async (userId: string) => {
         try {
-            setLoading(true);
+            // Only show loader if we don't have cached data ensuring a 0-sec load time
+            if (!currentUser || !homeSettings) setLoading(true);
             const { data: profile, error: pError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -249,6 +261,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             await supabase.auth.signOut();
             setCurrentUser(null);
             setHomeSettings(null);
+            localStorage.removeItem('octo_cache_user');
+            localStorage.removeItem('octo_cache_settings');
+            localStorage.removeItem('octo_cache_users');
+            localStorage.removeItem('octo_cache_tasks');
+            localStorage.removeItem('octo_cache_comps');
+            localStorage.removeItem('octo_cache_rems');
+            localStorage.removeItem('octo_cache_shops');
+            localStorage.removeItem('octo_cache_concepts');
+            localStorage.removeItem('octo_active_menu');
         },
         resetAllData: async () => {
             if (!homeSettings) return;
