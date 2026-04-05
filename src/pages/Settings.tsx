@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle, Copy } from 'lucide-react';
 import { ICONS } from '../utils/icons';
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#00FF88', '#FF5D00'];
@@ -337,30 +337,75 @@ export const Settings = () => {
                 </div>
 
                 {/* Invitations */}
-                <div className="bg-panel border border-foreground/10 rounded-[2rem] p-8 space-y-4 shadow-xl">
-                    <div className="flex items-center gap-3">
-                        <Share2 className="w-6 h-6 text-accent" />
-                        <h3 className="text-xl font-black text-foreground">Invitar Miembros</h3>
+                <div className="bg-panel border border-foreground/10 rounded-[2rem] p-8 space-y-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-4 right-6 p-2 bg-accent/10 rounded-xl">
+                        <Share2 className="w-5 h-5 text-accent" />
                     </div>
-                    <p className="text-xs font-medium text-text-dim italic">Envía este enlace para que otros se registren directamente en tu hogar.</p>
-                    {!homeSettings.householdInvitationId ? (
-                        <button onClick={() => generateInviteId()} className="w-full bg-accent hover:bg-accent/90 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95">
-                            Generar Enlace
+                    
+                    <div className="space-y-1">
+                        <h3 className="text-xl font-black text-foreground uppercase italic leading-none">Invitar Miembros</h3>
+                        <p className="text-[10px] font-black text-text-dim uppercase tracking-widest opacity-60">Haz que tu hogar crezca</p>
+                    </div>
+
+                    <p className="text-xs font-medium text-text-dim italic leading-relaxed">
+                        Envía el enlace directo para que entren al registrarse, o dales el código si ya tienen cuenta.
+                    </p>
+
+                    {!homeSettings.householdInvitationId && !homeSettings.household_invitation_id ? (
+                        <button 
+                            onClick={async () => {
+                                setIsSaving(true);
+                                await generateInviteId();
+                                setIsSaving(false);
+                            }} 
+                            disabled={isSaving}
+                            className="w-full bg-accent hover:bg-accent/90 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Zap className="w-5 h-5" /> Generar Código de Invitación</>}
                         </button>
                     ) : (
-                        <div className="bg-foreground/5 border border-foreground/10 rounded-2xl p-4 flex flex-col gap-3">
-                            <code className="text-xs text-accent font-mono break-all bg-black/20 p-3 rounded-xl border border-white/5">
-                                {window.location.origin}/join/{homeSettings.householdInvitationId}
-                            </code>
-                            <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.householdInvitationId}`);
-                                    alert('¡Enlace copiado al portapapeles!');
-                                }}
-                                className="w-full bg-foreground/10 hover:bg-foreground/20 text-foreground py-3 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2"
-                            >
-                                <Save className="w-4 h-4" /> Copiar Enlace
-                            </button>
+                        <div className="space-y-4 pt-2">
+                            {/* Link Box */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Enlace de Unión Directa</label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 truncate text-[11px] font-mono text-accent">
+                                        {window.location.host}/join/{homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.householdInvitationId || homeSettings.household_invitation_id}`);
+                                            alert('¡Enlace de unión copiado!');
+                                        }}
+                                        className="shrink-0 p-3 bg-accent text-white rounded-xl hover:bg-accent/90 transition-all active:scale-90"
+                                    >
+                                        <Copy className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Code Box */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Código de Hogar (Para Unirse Manualmente)</label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 text-center text-lg font-black tracking-[0.3em] text-foreground uppercase">
+                                        {homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(homeSettings.householdInvitationId || homeSettings.household_invitation_id || '');
+                                            alert('¡Código de hogar copiado!');
+                                        }}
+                                        className="shrink-0 p-3 bg-foreground text-panel rounded-xl hover:bg-foreground/80 transition-all active:scale-90"
+                                    >
+                                        <Copy className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p className="text-[9px] font-black text-text-dim uppercase tracking-widest text-center opacity-40 italic">
+                                * Pega este código en la sección "Unirse a otro hogar"
+                            </p>
                         </div>
                     )}
                 </div>

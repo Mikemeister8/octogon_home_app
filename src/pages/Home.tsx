@@ -1,6 +1,6 @@
 import { useAppContext } from '../store/AppContext';
 import { calculateRankings } from '../utils/ranking';
-import { Award, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, Sparkles, Loader2, Users } from 'lucide-react';
+import { Award, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, Sparkles, Loader2, Users, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getIcon } from '../utils/icons';
 
@@ -75,8 +75,17 @@ export const Home = () => {
                         </div>
                     </div>
                 </div>
-                <div className="text-right hidden sm:block">
-                    <span className="text-[8px] font-black text-text-dim uppercase tracking-[0.3em] opacity-30">OCTOGON HOME APP</span>
+                <div className="flex items-center gap-2">
+                    <Link 
+                        to="/settings" 
+                        className="p-3 bg-accent/20 hover:bg-accent text-accent hover:text-white rounded-2xl transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-widest group/invite shadow-lg shadow-accent/10"
+                    >
+                        <Share2 className="w-4 h-4 group-hover/invite:scale-110 transition-transform" />
+                        <span className="hidden xs:block">Invitar</span>
+                    </Link>
+                    <div className="text-right hidden sm:block ml-4">
+                        <span className="text-[8px] font-black text-text-dim uppercase tracking-[0.3em] opacity-30">OCTOGON HOME APP</span>
+                    </div>
                 </div>
             </div>
 

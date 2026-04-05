@@ -258,11 +258,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         generateInviteId: async () => {
             if (!homeSettings) return '';
-            const id = Math.random().toString(36).substr(2, 9);
-            await supabase.from('households').update({ 
-                [homeSettings.household_invitation_id !== undefined ? 'household_invitation_id' : 'householdInvitationId']: id 
+            const id = Math.random().toString(36).substring(2, 11).toUpperCase();
+            
+            // Try updating with both common naming conventions to be safe
+            const { error: updateError } = await supabase.from('households').update({ 
+                household_invitation_id: id,
+                householdInvitationId: id
             }).eq('id', homeSettings.id);
-            setHomeSettings({ ...homeSettings, householdInvitationId: id });
+
+            if (updateError) {
+                console.error("Error generating invite:", updateError);
+                // Try just one if the above failed due to non-existent column
+                await supabase.from('households').update({ 
+                    household_invitation_id: id 
+                }).eq('id', homeSettings.id);
+            }
+
+            setHomeSettings({ 
+                ...homeSettings, 
+                householdInvitationId: id,
+                household_invitation_id: id 
+            });
             return id;
         },
         joinSpaceByInviteLink: async (inviteId: string) => {
