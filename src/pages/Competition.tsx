@@ -1,119 +1,215 @@
+import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { calculateRankings } from '../utils/ranking';
-import { Trophy, Award, Target, Flame, Medal, Star, CheckCircle2, Loader2 } from 'lucide-react';
+import { Trophy, Award, Flame, Medal, Star, Loader2, Calendar, History, Crown } from 'lucide-react';
+
+type RankingView = 'current' | 'previous' | 'champions' | 'alltime';
 
 export const Competition = () => {
     const { users, tasks, completions, tokenName, loading } = useAppContext();
+    const [view, setView] = useState<RankingView>('current');
 
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const today = new Date();
-    const rankings = calculateRankings(users, tasks, completions, today.getMonth(), today.getFullYear());
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
 
-    const top1 = rankings[0];
-    const rest = rankings.slice(1);
+    // Current month
+    const currentRankings = calculateRankings(users, tasks, completions, currentMonth, currentYear);
 
-    const getMedalColor = (index: number) => {
-        if (index === 0) return 'text-yellow-500';
-        if (index === 1) return 'text-gray-400';
-        if (index === 2) return 'text-amber-600';
-        return 'text-text-dim';
-    };
+    // Get all months that have completions
+    const monthsWithData: { month: number, year: number, label: string }[] = [];
+    const seen = new Set<string>();
+    completions.forEach(c => {
+        const d = new Date(c.completed_at);
+        const key = `${d.getMonth()}-${d.getFullYear()}`;
+        if (!seen.has(key) && !(d.getMonth() === currentMonth && d.getFullYear() === currentYear)) {
+            seen.add(key);
+            monthsWithData.push({
+                month: d.getMonth(),
+                year: d.getFullYear(),
+                label: new Date(d.getFullYear(), d.getMonth()).toLocaleString('es-ES', { month: 'long', year: 'numeric' })
+            });
+        }
+    });
+    monthsWithData.sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
 
-    return (
-        <div className="p-4 sm:p-8 space-y-12 max-w-5xl mx-auto animate-in fade-in duration-700">
-            <header className="text-center space-y-4">
-                <div className="inline-flex items-center gap-3 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-black uppercase tracking-[0.2em] animate-bounce-slow">
-                    <Trophy className="w-4 h-4" /> Sala de Campeones
-                </div>
-                <h1 className="text-5xl font-black text-foreground tracking-tighter uppercase italic">Ranking {today.toLocaleString('es-ES', { month: 'long' })}</h1>
-                <p className="text-text-dim font-bold uppercase text-[10px] tracking-[0.4em]">¿Quién se llevará la gloria este mes?</p>
-            </header>
+    // Champions: winner of each past month
+    const champions = monthsWithData.map(m => {
+        const r = calculateRankings(users, tasks, completions, m.month, m.year);
+        return { ...m, winner: r[0] };
+    }).filter(c => c.winner);
 
-            {/* Podio Principal */}
-            {top1 && (
-                <div className="relative group perspective-1000">
-                    <div className="absolute inset-0 bg-primary/20 blur-[120px] rounded-full scale-75 group-hover:scale-100 transition-transform duration-1000" />
-                    <div className="relative bg-panel border-4 border-yellow-500/30 rounded-[3rem] p-10 flex flex-col items-center text-center shadow-2xl animate-in zoom-in duration-700">
-                        <div className="absolute -top-10 flex flex-col items-center">
-                            <Award className="w-16 h-16 text-yellow-500 animate-pulse drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
-                        </div>
+    // All-time totals
+    const allTimePoints = users.map(u => ({
+        user: u,
+        points: completions.filter(c => c.user_id === u.id).reduce((sum, c) => sum + c.points_earned, 0)
+    })).sort((a, b) => b.points - a.points);
 
-                        <div className="w-32 h-32 rounded-[2.5rem] bg-yellow-500 p-1 mb-6 shadow-2xl group-hover:rotate-6 transition-transform duration-500">
-                            <div className="w-full h-full rounded-[2.2rem] flex items-center justify-center text-4xl font-black text-white shadow-inner" style={{ backgroundColor: top1.user.color_hex }}>
-                                {top1.user.full_name[0]}
-                            </div>
-                        </div>
+    const [selectedPrevMonth, setSelectedPrevMonth] = useState(0);
 
-                        <h2 className="text-4xl font-black text-foreground tracking-tight mb-2 uppercase">{top1.user.full_name}</h2>
-                        <div className="flex items-center gap-4 bg-yellow-500/10 px-8 py-3 rounded-2xl border border-yellow-500/20">
-                            <Flame className="w-6 h-6 text-yellow-500" />
-                            <span className="text-3xl font-black text-yellow-500 font-mono tracking-tighter">{top1.points}</span>
-                            <span className="text-xs font-black text-yellow-500/60 uppercase ml-2">{tokenName}</span>
-                        </div>
+    const tabs = [
+        { key: 'current' as RankingView, label: 'Este Mes', icon: Flame },
+        { key: 'previous' as RankingView, label: 'Anteriores', icon: Calendar },
+        { key: 'champions' as RankingView, label: 'Campeones', icon: Crown },
+        { key: 'alltime' as RankingView, label: 'Histórico', icon: History },
+    ];
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-10 w-full max-w-sm border-t border-foreground/5 pt-8">
-                            <div className="flex flex-col items-center">
-                                <Target className="w-5 h-5 text-text-dim mb-1" />
-                                <span className="text-[10px] font-black uppercase text-text-dim">Eficacia</span>
-                                <span className="text-lg font-black text-foreground font-mono">100%</span>
-                            </div>
-                            <div className="flex flex-col items-center border-y sm:border-y-0 sm:border-x border-foreground/5 py-4 sm:py-0">
-                                <Star className="w-5 h-5 text-yellow-500 mb-1" />
-                                <span className="text-[10px] font-black uppercase text-text-dim">Nivel</span>
-                                <span className="text-lg font-black text-foreground font-mono uppercase">Gold</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                                <CheckCircle2 className="w-5 h-5 text-green-500 mb-1" />
-                                <span className="text-[10px] font-black uppercase text-text-dim">Racha</span>
-                                <span className="text-lg font-black text-foreground font-mono">7D</span>
-                            </div>
+    const RankingList = ({ rankings }: { rankings: ReturnType<typeof calculateRankings> }) => (
+        <div className="space-y-4">
+            {rankings.map((item, idx) => (
+                <div key={item.user.id} className={`bg-panel border border-foreground/10 rounded-[2rem] p-5 flex items-center gap-5 hover:translate-x-2 transition-all group shadow-xl ${idx === 0 ? 'border-yellow-500/30' : ''}`}>
+                    <div className={`w-10 text-2xl font-black flex items-center justify-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-text-dim'}`}>
+                        {idx === 0 ? <Medal className="w-7 h-7" /> : idx === 1 ? <Medal className="w-6 h-6" /> : `#${idx + 1}`}
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: item.user.color_hex }}>
+                        {item.user.full_name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-black text-foreground tracking-tight uppercase truncate">{item.user.full_name}</h3>
+                        <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden mt-1">
+                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${rankings[0] ? (item.points / rankings[0].points) * 100 : 0}%`, backgroundColor: item.user.color_hex }} />
                         </div>
                     </div>
+                    <div className="text-right pl-4 border-l border-foreground/10">
+                        <p className="text-xl font-black text-foreground font-mono tracking-tighter">{item.points}</p>
+                        <p className="text-[9px] font-bold text-text-dim uppercase tracking-widest">{tokenName}</p>
+                    </div>
+                </div>
+            ))}
+            {rankings.length === 0 && (
+                <div className="p-20 text-center bg-foreground/5 rounded-[3rem] border border-dashed border-foreground/10">
+                    <Trophy className="w-16 h-16 text-text-dim/10 mx-auto mb-4" />
+                    <p className="text-text-dim font-black uppercase tracking-widest">Sin datos</p>
+                </div>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="p-4 sm:p-8 space-y-8 max-w-5xl mx-auto animate-in fade-in duration-700 pb-20">
+            <header className="text-center space-y-4">
+                <div className="inline-flex items-center gap-3 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-black uppercase tracking-[0.2em]">
+                    <Trophy className="w-4 h-4" /> Ranking
+                </div>
+                <h1 className="text-4xl sm:text-5xl font-black text-foreground tracking-tighter uppercase italic">Competición</h1>
+            </header>
+
+            {/* Tabs */}
+            <div className="flex flex-wrap bg-foreground/5 p-1.5 rounded-2xl border border-foreground/10 gap-1">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setView(tab.key)}
+                        className={`flex-1 min-w-[70px] flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all ${view === tab.key ? 'bg-primary text-white shadow-xl' : 'text-text-dim hover:bg-foreground/5'}`}
+                    >
+                        <tab.icon className="w-4 h-4" />
+                        <span className="hidden sm:inline">{tab.label}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Current Month */}
+            {view === 'current' && (
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    <h2 className="text-2xl font-black uppercase italic tracking-tight">
+                        <Flame className="w-6 h-6 text-primary inline mr-2" />
+                        {today.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                    </h2>
+                    <RankingList rankings={currentRankings} />
                 </div>
             )}
 
-            {/* Lista del resto */}
-            <div className="space-y-4">
-                {rest.length > 0 ? rest.map((item, idx) => (
-                    <div key={item.user.id} className="bg-panel border border-foreground/10 rounded-[2rem] p-5 flex items-center gap-6 hover:translate-x-2 transition-all group shadow-xl">
-                        <div className={`w-12 text-2xl font-black flex items-center justify-center ${getMedalColor(idx + 1)}`}>
-                            {idx === 0 ? <Medal className="w-8 h-8" /> : `#${idx + 2}`}
+            {/* Previous Months */}
+            {view === 'previous' && (
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    {monthsWithData.length > 0 ? (
+                        <>
+                            <div className="flex flex-wrap gap-2">
+                                {monthsWithData.map((m, idx) => (
+                                    <button
+                                        key={`${m.month}-${m.year}`}
+                                        onClick={() => setSelectedPrevMonth(idx)}
+                                        className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all border ${selectedPrevMonth === idx ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10'}`}
+                                    >
+                                        {m.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <RankingList rankings={calculateRankings(users, tasks, completions, monthsWithData[selectedPrevMonth].month, monthsWithData[selectedPrevMonth].year)} />
+                        </>
+                    ) : (
+                        <div className="p-20 text-center bg-foreground/5 rounded-[3rem] border border-dashed border-foreground/10">
+                            <Calendar className="w-16 h-16 text-text-dim/10 mx-auto mb-4" />
+                            <p className="text-text-dim font-black uppercase tracking-widest">Sin meses anteriores</p>
                         </div>
+                    )}
+                </div>
+            )}
 
-                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: item.user.color_hex }}>
-                            {item.user.full_name[0]}
-                        </div>
-
-                        <div className="flex-1">
-                            <h3 className="text-xl font-black text-foreground tracking-tight uppercase">{item.user.full_name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="h-2 flex-1 bg-foreground/5 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full transition-all duration-1000"
-                                        style={{ width: `${(item.points / (top1?.points || 1)) * 100}%`, backgroundColor: item.user.color_hex }}
-                                    />
+            {/* Champions */}
+            {view === 'champions' && (
+                <div className="space-y-4 animate-in fade-in duration-500">
+                    <h2 className="text-2xl font-black uppercase italic tracking-tight">
+                        <Crown className="w-6 h-6 text-yellow-500 inline mr-2" />
+                        Campeones Mensuales
+                    </h2>
+                    {champions.length > 0 ? champions.map(c => (
+                        <div key={`${c.month}-${c.year}`} className="bg-panel border border-yellow-500/10 rounded-[2rem] p-6 flex items-center gap-5 shadow-xl group hover:border-yellow-500/30 transition-all">
+                            <div className="shrink-0 relative">
+                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-lg" style={{ backgroundColor: c.winner!.user.color_hex }}>
+                                    {c.winner!.user.full_name[0]}
                                 </div>
+                                <Award className="w-5 h-5 text-yellow-500 absolute -top-2 -right-2" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-black text-foreground uppercase tracking-tight">{c.winner!.user.full_name}</h3>
+                                <p className="text-xs text-text-dim font-bold uppercase tracking-widest capitalize">{c.label}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xl font-black text-yellow-500 font-mono">{c.winner!.points}</p>
+                                <p className="text-[9px] font-bold text-text-dim uppercase">{tokenName}</p>
                             </div>
                         </div>
-
-                        <div className="text-right px-6 border-l border-foreground/10">
-                            <p className="text-2xl font-black text-foreground font-mono leading-none tracking-tighter">{item.points}</p>
-                            <p className="text-[10px] font-bold text-text-dim uppercase tracking-widest mt-1">{tokenName}</p>
+                    )) : (
+                        <div className="p-20 text-center bg-foreground/5 rounded-[3rem] border border-dashed border-foreground/10">
+                            <Crown className="w-16 h-16 text-text-dim/10 mx-auto mb-4" />
+                            <p className="text-text-dim font-black uppercase tracking-widest">Aún no hay campeones</p>
+                            <p className="text-[10px] text-text-dim/60 uppercase mt-2">Los campeones se registran al acabar cada mes</p>
                         </div>
-                    </div>
-                )) : !top1 && (
-                    <div className="p-20 text-center bg-panel border-2 border-dashed border-foreground/10 rounded-[3rem]">
-                        <Trophy className="w-16 h-16 text-text-dim/10 mx-auto mb-4" />
-                        <p className="text-text-dim font-black uppercase tracking-widest">El campo de batalla esta vacio</p>
-                        <p className="text-[10px] text-text-dim/60 uppercase mt-2">Suma puntos completando tareas para aparecer aqui</p>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
-            <footer className="text-center pt-10 text-[10px] font-black uppercase tracking-[0.5em] text-text-dim opacity-20">
-                Octogon Competitive Engine • 2026
-            </footer>
+            {/* All-Time */}
+            {view === 'alltime' && (
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    <h2 className="text-2xl font-black uppercase italic tracking-tight">
+                        <Star className="w-6 h-6 text-primary inline mr-2" />
+                        Puntuación Histórica Total
+                    </h2>
+                    <div className="space-y-4">
+                        {allTimePoints.map((item, idx) => (
+                            <div key={item.user.id} className="bg-panel border border-foreground/10 rounded-[2rem] p-6 flex items-center gap-5 shadow-xl group hover:translate-x-2 transition-all">
+                                <div className={`w-10 text-2xl font-black flex items-center justify-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-text-dim'}`}>
+                                    #{idx + 1}
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg" style={{ backgroundColor: item.user.color_hex }}>
+                                    {item.user.full_name[0]}
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-black text-foreground uppercase tracking-tight">{item.user.full_name}</h3>
+                                </div>
+                                <div className="text-right pl-4 border-l border-foreground/10">
+                                    <p className="text-2xl font-black text-foreground font-mono tracking-tighter">{item.points}</p>
+                                    <p className="text-[9px] font-bold text-text-dim uppercase tracking-widest">{tokenName} totales</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

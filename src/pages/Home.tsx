@@ -55,29 +55,33 @@ export const Home = () => {
         .slice(0, 8);
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+        <div className="p-4 sm:p-8 space-y-8 pb-20">
             {/* Header: Solo el nombre del hogar, sin duplicar "Octogon" */}
             <div className="flex items-center justify-between gap-4 px-4 py-3 bg-foreground/5 rounded-3xl border border-foreground/10">
                 <div className="flex items-center gap-4 group">
-                    <div className="p-2.5 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 shrink-0">
-                        <HomeIconComponent className="w-7 h-7" style={{ color: homeSettings.themeColor }} />
+                    <div className="p-2 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 shrink-0">
+                        <img src="/logo.png" alt="Octogon" className="w-8 h-8 object-contain" />
                     </div>
-                    <div>
-                        <h1 className="text-lg font-black tracking-tight leading-none truncate max-w-[200px]" style={{ color: homeSettings.themeColor }}>{homeSettings.name}</h1>
-                        <span className="text-[10px] font-bold text-text-dim flex items-center gap-1 mt-1 uppercase tracking-widest opacity-50">
-                            <Users className="w-3 h-3" />
-                            {users.length} Miembros
-                        </span>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-primary/10 shrink-0">
+                            <HomeIconComponent className="w-5 h-5" style={{ color: homeSettings.themeColor }} />
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-black tracking-tight leading-none truncate max-w-[180px]" style={{ color: homeSettings.themeColor }}>{homeSettings.name}</h1>
+                            <span className="text-[10px] font-bold text-text-dim flex items-center gap-1 mt-1 uppercase tracking-widest opacity-50">
+                                <Users className="w-3 h-3" />
+                                {users.length} Miembros
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                     <span className="text-[8px] font-black text-text-dim uppercase tracking-[0.3em] opacity-30">OCTOGON HOME APP</span>
                 </div>
             </div>
 
             {/* Ranking Card */}
-            <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/10 blur-3xl rounded-full group-hover:bg-primary/20 transition-all duration-700"></div>
+            <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-6 sm:p-10 shadow-md relative overflow-hidden">
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
                     <div className="flex-1 text-center lg:text-left space-y-4">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-bold uppercase tracking-wide">

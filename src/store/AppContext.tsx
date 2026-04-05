@@ -30,7 +30,7 @@ interface AppState {
     deleteReminder: (id: string) => Promise<void>;
 
     shoppingItems: ShoppingItem[];
-    addShoppingItem: (name: string, userId: string) => Promise<void>;
+    addShoppingItem: (name: string, quantity: number, userId: string) => Promise<void>;
     updateShoppingItem: (si: ShoppingItem) => Promise<void>;
     deleteShoppingItem: (id: string) => Promise<void>;
 
@@ -201,9 +201,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
         shoppingItems,
-        addShoppingItem: async (name, userId) => {
+        addShoppingItem: async (name, quantity, userId) => {
             if (!homeSettings) return;
-            const { data, error } = await supabase.from('shopping_items').insert({ name, created_by: userId, household_id: homeSettings.id }).select().single();
+            const { data, error } = await supabase.from('shopping_items').insert({ name, quantity, created_by: userId, household_id: homeSettings.id }).select().single();
             if (data && !error) setShoppingItems(prev => [...prev, data]);
         },
         updateShoppingItem: async (si) => {

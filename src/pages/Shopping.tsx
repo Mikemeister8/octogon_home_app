@@ -9,6 +9,7 @@ export const Shopping = () => {
         shoppingConcepts, addShoppingConcept, currentUser, loading
     } = useAppContext();
     const [newItem, setNewItem] = useState('');
+    const [quantity, setQuantity] = useState(1);
     const [suggestions, setSuggestions] = useState<ShoppingConcept[]>([]);
 
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
@@ -34,8 +35,9 @@ export const Shopping = () => {
             await addShoppingConcept(name.trim());
         }
 
-        await addShoppingItem(name.trim(), currentUser.id);
+        await addShoppingItem(name.trim(), quantity, currentUser.id);
         setNewItem('');
+        setQuantity(1);
         setSuggestions([]);
     };
 
@@ -46,8 +48,8 @@ export const Shopping = () => {
     const activeItems = shoppingItems.filter(i => !i.is_purchased);
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto animate-in fade-in duration-700">
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+        <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto pb-20">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-panel border border-foreground/10 rounded-3xl p-8 shadow-md relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-accent/10 to-transparent pointer-events-none" />
                 <div className="flex items-center gap-6 relative z-10">
                     <div className="bg-accent/20 p-5 rounded-[2rem] shrink-0 group-hover:scale-110 transition-transform duration-500 shadow-lg">
@@ -61,15 +63,22 @@ export const Shopping = () => {
             </header>
 
             <div className="relative group">
-                <form onSubmit={(e) => { e.preventDefault(); handleAdd(newItem); }} className="relative">
+                <form onSubmit={(e) => { e.preventDefault(); handleAdd(newItem); }} className="relative flex gap-2">
+                    <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={e => setQuantity(Number(e.target.value))}
+                        className="w-24 bg-panel border border-foreground/10 rounded-2xl py-4 px-4 text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
+                    />
                     <input
                         type="text"
                         value={newItem}
                         onChange={e => handleInputChange(e.target.value)}
                         placeholder="Escribe un producto..."
-                        className="w-full bg-panel border border-foreground/10 rounded-2xl py-5 px-6 pr-20 text-lg font-bold text-foreground focus:outline-none focus:border-primary transition-all shadow-xl placeholder:opacity-30"
+                        className="flex-1 bg-panel border border-foreground/10 rounded-2xl py-4 px-6 text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm placeholder:opacity-30"
                     />
-                    <button type="submit" disabled={!newItem.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-30">
+                    <button type="submit" disabled={!newItem.trim()} className="px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl transition-all shadow-sm active:scale-95 disabled:opacity-30 flex items-center justify-center">
                         <Plus className="w-6 h-6" />
                     </button>
                 </form>
@@ -100,15 +109,18 @@ export const Shopping = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {activeItems.length > 0 ? activeItems.map(item => (
-                        <div key={item.id} className="bg-panel border border-foreground/10 p-5 rounded-2xl flex items-center gap-4 hover:border-primary/30 group transition-all shadow-md">
+                        <div key={item.id} className="bg-panel border border-foreground/10 p-5 rounded-2xl flex items-center gap-4 hover:border-primary/30 group shadow-sm">
                             <button
                                 onClick={() => toggleBought(item)}
-                                className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center transition-all shrink-0"
+                                className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center shrink-0"
                             >
-                                <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20 transition-opacity" />
+                                <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20" />
                             </button>
-                            <span className="flex-1 text-foreground font-black tracking-tight">{item.name}</span>
-                            <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 opacity-40 hover:opacity-100 transition-opacity">
+                            <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <span className="bg-foreground/5 text-text-dim px-2 py-0.5 rounded text-xs font-bold shrink-0">{item.quantity || 1}x</span>
+                                <span className="text-foreground font-black tracking-tight truncate">{item.name}</span>
+                            </div>
+                            <button onClick={() => deleteShoppingItem(item.id)} className="p-2 text-text-dim hover:text-red-500 opacity-40 hover:opacity-100">
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>

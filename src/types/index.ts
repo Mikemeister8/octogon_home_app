@@ -53,34 +53,32 @@ export interface ShoppingItem {
     id: string;
     household_id: string;
     name: string;
+    quantity: number;
     is_purchased: boolean;
     created_at: string; // ISO string
     created_by?: string | null; // userId
 }
 
 export interface MealIngredient {
-    id: string;
     name: string;
-    amount?: string;
     quantity: number;
-    unit: string;
+    addToShopping: boolean;
 }
 
 export interface MealBlock {
     id: string;
     title: string;
     description?: string;
-    meal?: string;
-    day?: string;
-    slotId?: string;
     ingredients: MealIngredient[];
+    day?: string;
+    slot?: string;
 }
 
 export interface WeeklyMenu {
     id: string;
     name: string;
     isFavorite: boolean;
-    slots: unknown[];
+    mealSlots: string[];
     blocks: MealBlock[];
 }
 

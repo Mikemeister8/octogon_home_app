@@ -105,13 +105,14 @@ const MobileNav = () => {
   const navItems = [
     { path: '/', icon: Home, label: 'Inicio' },
     { path: '/tasks', icon: ListTodo, label: 'Tareas' },
-    { path: '/dashboards', icon: LayoutDashboard, label: 'Panel' },
+    { path: '/competition', icon: Trophy, label: 'Ranking' },
+    { path: '/meals', icon: Utensils, label: 'Menú' },
     { path: '/reminders', icon: Calendar, label: 'Agenda' },
     { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-panel/95 backdrop-blur-xl border-t border-foreground/5 lg:hidden z-50 px-2 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-panel border-t border-foreground/5 lg:hidden z-50 px-1 pb-safe-area shadow-md">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
@@ -119,21 +120,19 @@ const MobileNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ${isActive ? 'text-primary' : 'text-text-dim/40'
-                }`}
+              className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-text-dim/40'}`}
             >
-              <item.icon className={`w-5 h-5 ${isActive ? 'scale-110' : 'scale-100'}`} />
-              <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
+              <item.icon className="w-5 h-5" />
+              <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
             </Link>
           );
         })}
         <Link
           to="/settings"
-          className={`flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors duration-200 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'}`}
         >
-          <SettingsIcon className={`w-5 h-5 ${location.pathname === '/settings' ? 'scale-110' : 'scale-100'}`} />
-          <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
+          <SettingsIcon className="w-5 h-5" />
+          <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
         </Link>
       </div>
     </nav>
@@ -155,7 +154,7 @@ const AppContent = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 space-y-8 animate-in fade-in duration-500">
         <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
+          <div className="absolute inset-0 bg-primary/10 rounded-full scale-150 animate-pulse" />
           <div className="w-24 h-24 bg-panel border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center relative z-10 shadow-2xl">
             <img src="/logo.png" alt="Octogon" className="w-12 h-12 object-contain" />
           </div>

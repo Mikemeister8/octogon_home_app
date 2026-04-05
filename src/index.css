@@ -45,13 +45,12 @@
 
   html,
   body {
-    @apply antialiased transition-colors duration-500 overflow-x-hidden;
+    @apply antialiased;
     background-color: var(--color-bg);
     color: var(--color-text);
     width: 100%;
     margin: 0;
     padding: 0;
-    touch-action: manipulation;
   }
 
   #root {
