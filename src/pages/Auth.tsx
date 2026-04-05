@@ -51,7 +51,6 @@ export const Auth = () => {
                     .insert({
                         name: homeName || (userName + "'s Home"),
                         token_name: 'Puntos',
-                        logo: 'Home',
                         themeColor: '#00FF88'
                     })
                     .select()

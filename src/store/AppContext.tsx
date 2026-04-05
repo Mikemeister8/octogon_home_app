@@ -215,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     // No invite found or no invite used - create a brand new household
                     const { data: household, error: hError } = await supabase
                         .from('households')
-                        .insert({ name: name + "'s Home", token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
+                        .insert({ name: name + "'s Home", token_name: 'Puntos', themeColor: '#00FF88' })
                         .select().single();
                     if (hError) throw new Error("Error al crear el hogar: " + hError.message);
                     if (!household) throw new Error("No se pudo crear el hogar.");
