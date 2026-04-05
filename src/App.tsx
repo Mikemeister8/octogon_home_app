@@ -140,10 +140,11 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, loading, needsProfileSetup, setupProfile } = useAppContext();
+  const { currentUser, loading, needsProfileSetup, setupProfile, logout } = useAppContext();
   const location = useLocation();
   const [setupName, setSetupName] = useState('');
   const [setupLoading, setSetupLoading] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -176,8 +177,13 @@ const AppContent = () => {
       e.preventDefault();
       if (!setupName.trim()) return;
       setSetupLoading(true);
-      await setupProfile(needsProfileSetup, setupName);
-      setSetupLoading(false);
+      setSetupError(null);
+      try {
+        await setupProfile(needsProfileSetup, setupName);
+      } catch (err: any) {
+        setSetupError(err.message || 'Error al crear el perfil. Por favor, reinténtalo.');
+        setSetupLoading(false);
+      }
     };
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
@@ -193,6 +199,12 @@ const AppContent = () => {
                 : 'Tu cuenta existe pero necesitas completar tu perfil para acceder.'}
             </p>
           </div>
+
+          {setupError && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-medium">
+              {setupError}
+            </div>
+          )}
           <form onSubmit={handleSetup} className="space-y-4">
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Tu Nombre</label>
@@ -204,6 +216,13 @@ const AppContent = () => {
               {setupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar al Hogar'}
             </button>
           </form>
+
+          <button 
+            onClick={() => logout()}
+            className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-red-500 transition-colors"
+          >
+            Cerrar Sesión y salir
+          </button>
         </div>
       </div>
     );

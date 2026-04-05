@@ -190,38 +190,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loading,
         needsProfileSetup,
         setupProfile: async (userId, name) => {
-            // Try to get the pending invite from sessionStorage to join the right household
-            const pendingInvite = sessionStorage.getItem('pendingInvite');
-            let householdId: string | null = null;
+            try {
+                // Try to get the pending invite from sessionStorage to join the right household
+                const pendingInvite = sessionStorage.getItem('pendingInvite');
+                let householdId: string | null = null;
 
-            if (pendingInvite) {
-                const { data: inviteHome } = await supabase
-                    .from('households')
-                    .select('id')
-                    .eq('householdInvitationId', pendingInvite)
-                    .single();
-                if (inviteHome) {
-                    householdId = inviteHome.id;
-                    sessionStorage.removeItem('pendingInvite');
+                if (pendingInvite) {
+                    const { data: inviteHome, error: inviteError } = await supabase
+                        .from('households')
+                        .select('id')
+                        .eq('householdInvitationId', pendingInvite)
+                        .single();
+                    
+                    if (inviteHome) {
+                        householdId = inviteHome.id;
+                        sessionStorage.removeItem('pendingInvite');
+                    } else if (inviteError && inviteError.code !== 'PGRST116') {
+                        // Throw if it's a real error (not just 'no rows found')
+                        throw new Error("No se pudo encontrar el hogar de la invitación: " + inviteError.message);
+                    }
                 }
-            }
 
-            if (!householdId) {
-                // No invite - create a brand new household
-                const { data: household } = await supabase
-                    .from('households')
-                    .insert({ name: name + "'s Home", token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
-                    .select().single();
-                if (!household) return;
-                householdId = household.id;
-            }
+                if (!householdId) {
+                    // No invite found or no invite used - create a brand new household
+                    const { data: household, error: hError } = await supabase
+                        .from('households')
+                        .insert({ name: name + "'s Home", token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
+                        .select().single();
+                    if (hError) throw new Error("Error al crear el hogar: " + hError.message);
+                    if (!household) throw new Error("No se pudo crear el hogar.");
+                    householdId = household.id;
+                }
 
-            await supabase.from('profiles').insert({
-                id: userId, household_id: householdId, full_name: name,
-                avatar_url: '', color_hex: '#00FF88', theme: 'cyber'
-            });
-            setNeedsProfileSetup(null);
-            await fetchUserData(userId);
+                const { error: profileError } = await supabase.from('profiles').upsert({
+                    id: userId, household_id: householdId, full_name: name,
+                    avatar_url: '', color_hex: '#00FF88', theme: 'cyber'
+                });
+
+                if (profileError) throw new Error("Error al crear el perfil: " + profileError.message);
+
+                setNeedsProfileSetup(null);
+                await fetchUserData(userId);
+            } catch (err: any) {
+                console.error("Setup Profile Error:", err);
+                throw err;
+            }
         },
         shoppingConcepts,
 
