@@ -12,8 +12,14 @@ export const Settings = () => {
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
-        generateInviteId, resetAllData, logout, loading
+        generateInviteId, resetAllData, logout, loading,
+        joinSpaceByInviteLink
     } = useAppContext();
+
+    const [inviteCode, setInviteCode] = useState('');
+    const [joinLoading, setJoinLoading] = useState(false);
+    const [joinError, setJoinError] = useState<string | null>(null);
+    const [joinSuccess, setJoinSuccess] = useState(false);
 
     const [localToken, setLocalToken] = useState(tokenName);
     const [homeName, setHomeName] = useState(homeSettings?.name || '');
@@ -67,7 +73,7 @@ export const Settings = () => {
     const handleSaveHome = async () => {
         setIsSaving(true);
         const updated = { ...homeSettings, name: homeName, logo: homeLogo, themeColor: homeColor };
-        const { error } = await supabase.from('households').update({ name: homeName, logo: homeLogo, themeColor: homeColor }).eq('id', homeSettings.id);
+        const { error } = await supabase.from('households').update({ name: homeName, logo: homeLogo, theme_color: homeColor }).eq('id', homeSettings.id);
         if (!error) {
             setHomeSettings(updated);
             notifySaved('home');
@@ -238,6 +244,69 @@ export const Settings = () => {
                             className="w-full py-4 rounded-2xl font-black bg-blue-500 hover:bg-blue-600 text-white transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/30 uppercase text-xs tracking-widest"
                         >
                             {savedSection === 'profile' ? 'Perfil Guardado ✓' : <><Save className="w-5 h-5" /> Actualizar Perfil</>}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Manual Join Section */}
+                <div className="bg-panel border border-foreground/10 rounded-[2rem] p-8 space-y-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-24 h-24 bg-primary/5 blur-3xl rounded-full" />
+                    
+                    <div className="flex items-center gap-4 mb-2">
+                        <div className="p-3 bg-primary/10 rounded-2xl">
+                            <Share2 className="w-6 h-6 text-primary" />
+                        </div>
+                        <h2 className="text-2xl font-black text-foreground">Unirse a otro Hogar</h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        <p className="text-text-dim text-xs font-bold leading-relaxed px-1">
+                            Si tienes un código de invitación de otro hogar, pégalo aquí para unirte a su espacio. 
+                            <span className="block mt-1 text-red-500 font-black uppercase text-[9px] tracking-widest">
+                                • Perderás acceso a tu hogar actual
+                            </span>
+                        </p>
+
+                        <div className="space-y-2">
+                            <input
+                                placeholder="Pega el código aquí (ej: a8k2m9v)"
+                                value={inviteCode}
+                                onChange={e => setInviteCode(e.target.value)}
+                                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl px-4 py-4 text-foreground font-black tracking-widest text-center focus:outline-none focus:border-primary transition-all placeholder:text-text-dim/30 placeholder:tracking-normal"
+                            />
+                        </div>
+
+                        {joinError && (
+                            <p className="p-3 bg-red-500/10 text-red-500 text-[10px] font-black rounded-xl border border-red-500/20 text-center uppercase">
+                                {joinError}
+                            </p>
+                        )}
+                        {joinSuccess && (
+                            <p className="p-3 bg-green-500/10 text-green-500 text-[10px] font-black rounded-xl border border-green-500/20 text-center uppercase">
+                                ¡Te has unido correctamente! ✓
+                            </p>
+                        )}
+
+                        <button
+                            onClick={async () => {
+                                if(!inviteCode.trim()) return;
+                                setJoinLoading(true);
+                                setJoinError(null);
+                                setJoinSuccess(false);
+                                try {
+                                    await joinSpaceByInviteLink(inviteCode.trim());
+                                    setJoinSuccess(true);
+                                    setInviteCode('');
+                                } catch (err: any) {
+                                    setJoinError(err.message || 'Error al unirse');
+                                } finally {
+                                    setJoinLoading(false);
+                                }
+                            }}
+                            disabled={joinLoading || !inviteCode.trim()}
+                            className="w-full py-4 rounded-2xl font-black bg-primary hover:bg-primary/90 text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 uppercase text-xs tracking-widest active:scale-95 disabled:opacity-50 disabled:grayscale"
+                        >
+                            {joinLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Unirse ahora'}
                         </button>
                     </div>
                 </div>

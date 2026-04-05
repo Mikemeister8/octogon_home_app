@@ -5,7 +5,7 @@ import { UserPlus, ArrowRight, Loader2, ShieldCheck, Sparkles, Laptop, Moon } fr
 
 export const JoinHousehold = () => {
     const { inviteId } = useParams();
-    const { joinHouseholdLink, currentUser, loading } = useAppContext();
+    const { joinSpaceByInviteLink, currentUser, loading } = useAppContext();
     const navigate = useNavigate();
     const [status, setStatus] = useState<'joining' | 'success' | 'checking'>('checking');
 
@@ -14,17 +14,22 @@ export const JoinHousehold = () => {
             if (inviteId && currentUser) {
                 console.log("JOIN START - Logged In User:", currentUser.id, "Invite:", inviteId);
                 setStatus('joining');
-                await joinHouseholdLink(inviteId);
-                console.log("JOIN FLOW COMPLETED for existing user.");
-                setStatus('success');
+                try {
+                    await joinSpaceByInviteLink(inviteId);
+                    console.log("JOIN FLOW COMPLETED for existing user.");
+                    setStatus('success');
+                } catch (err) {
+                    console.error("Error joining household:", err);
+                    setStatus('checking');
+                }
             } else if (!loading && !currentUser) {
                 console.log("INVITE ID RECIBIDO en Link:", inviteId);
-                sessionStorage.setItem('pendingInvite', inviteId || '');
+                localStorage.setItem('pendingInvite', inviteId || '');
                 navigate('/auth');
             }
         };
         join();
-    }, [inviteId, joinHouseholdLink, currentUser, loading, navigate]);
+    }, [inviteId, joinSpaceByInviteLink, currentUser, loading, navigate]);
 
     if (loading || status === 'joining' || status === 'checking') {
         return (
