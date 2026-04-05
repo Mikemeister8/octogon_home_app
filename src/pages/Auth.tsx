@@ -76,7 +76,15 @@ export const Auth = () => {
 
             if (pError) throw pError;
 
-            setNeedsVerification(true);
+            // If Supabase auto-confirmed the email, session is set immediately - go to home!
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                // Session active: navigate directly, AppContext will pick it up
+                window.location.href = '/';
+            } else {
+                // Email confirmation required
+                setNeedsVerification(true);
+            }
         } catch (err: any) {
             setError(err.message || 'Error en el registro');
         } finally {
@@ -98,8 +106,8 @@ export const Auth = () => {
 
             if (verifyError) throw verifyError;
 
-            // Redirect will happen automatically if session is set
-            window.location.reload();
+            // Navigate to home - the auth listener in AppContext will load the user
+            window.location.href = '/';
         } catch (err: any) {
             setError(err.message || 'Código inválido');
         } finally {
@@ -133,6 +141,9 @@ export const Auth = () => {
         if (authError) {
             setError(authError.message);
             setLoading(false);
+        } else {
+            // Login success - navigate to home (AppContext onAuthStateChange fires)
+            window.location.href = '/';
         }
     };
 
