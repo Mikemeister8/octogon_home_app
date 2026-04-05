@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils, UserPlus } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -12,7 +12,7 @@ import { JoinHousehold } from './pages/JoinHousehold';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
