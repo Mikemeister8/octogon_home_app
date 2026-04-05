@@ -122,11 +122,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 // Profile missing - can we create it automatically?
                 const pendingInvite = sessionStorage.getItem('pendingInvite');
                 if (pendingInvite) {
-                    const { data: inviteHome } = await supabase
-                        .from('households')
-                        .select('id')
-                        .or(`household_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
-                        .single();
+                    // Ultra-robust search in JS to avoid "column not found" PostgREST errors
+                    const { data: allHomes } = await supabase.from('households').select('*');
+                    const inviteHome = (allHomes || []).find(h => 
+                        h.household_invitation_id === pendingInvite || 
+                        h.householdInvitationId === pendingInvite
+                    );
+
                     if (inviteHome) {
                         // Create profile silently
                         await supabase.from('profiles').upsert({
@@ -356,14 +358,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return id;
         },
         joinHouseholdLink: async (inviteId) => {
-            const { data: household } = await supabase.from('households')
-                .select('id')
-                .or(`household_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
-                .single();
-            if (household && currentUser) {
-                await supabase.from('profiles').upsert({ // User upsert to avoid issues
+            const { data: allHomes } = await supabase.from('households').select('*');
+            const inviteHome = (allHomes || []).find(h => 
+                h.household_invitation_id === inviteId || 
+                h.householdInvitationId === inviteId
+            );
+
+            if (inviteHome && currentUser) {
+                await supabase.from('profiles').upsert({
                     id: currentUser.id,
-                    household_id: household.id,
+                    household_id: inviteHome.id,
                     full_name: currentUser.full_name || 'Nuevo Miembro'
                 });
                 fetchUserData(currentUser.id);

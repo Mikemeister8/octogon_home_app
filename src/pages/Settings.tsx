@@ -30,10 +30,10 @@ export const Settings = () => {
 
     useEffect(() => {
         if (homeSettings) {
-            setHomeName(homeSettings.name);
+            setHomeName(homeSettings.name || '');
             setHomeLogo(homeSettings.logo || 'Home');
-            setHomeColor(homeSettings.themeColor);
-            setLocalToken(homeSettings.token_name);
+            setHomeColor(homeSettings.themeColor || homeSettings.theme_color || '#00FF88');
+            setLocalToken(homeSettings.token_name || homeSettings.tokenName || 'Puntos');
         }
         if (currentUser) {
             setUserName(currentUser.full_name);
