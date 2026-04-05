@@ -125,7 +125,7 @@ export const Auth = () => {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-            <div className="max-w-md w-full animate-in fade-in zoom-in-95 duration-700">
+            <div className="max-w-md w-full">
                 {/* Logo Branding */}
                 <div className="flex flex-col items-center mb-10 text-center">
                     <div className="w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl">
@@ -141,13 +141,13 @@ export const Auth = () => {
                     <div className="absolute top-0 right-0 -mt-20 -mr-20 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
 
                     {error && (
-                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-medium animate-in slide-in-from-top-2">
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-medium">
                             {error}
                         </div>
                     )}
 
                     {needsVerification ? (
-                        <div className="space-y-8 py-6 text-center animate-in fade-in zoom-in duration-500">
+                        <div className="space-y-8 py-6 text-center">
                             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <Mail className="w-10 h-10 text-primary animate-bounce" />
                             </div>

@@ -59,7 +59,7 @@ export const Home = () => {
             {/* Header: Solo el nombre del hogar, sin duplicar "Octogon" */}
             <div className="flex items-center justify-between gap-4 px-4 py-3 bg-foreground/5 rounded-3xl border border-foreground/10">
                 <div className="flex items-center gap-4 group">
-                    <div className="p-2 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 shrink-0">
+                    <div className="p-2 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform shrink-0">
                         <img src="/logo.png" alt="Octogon" className="w-8 h-8 object-contain" />
                     </div>
                     <div className="flex items-center gap-3">

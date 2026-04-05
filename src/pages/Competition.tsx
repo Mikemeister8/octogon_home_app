@@ -69,7 +69,7 @@ export const Competition = () => {
                     <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-black text-foreground tracking-tight uppercase truncate">{item.user.full_name}</h3>
                         <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden mt-1">
-                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${rankings[0] ? (item.points / rankings[0].points) * 100 : 0}%`, backgroundColor: item.user.color_hex }} />
+                            <div className="h-full rounded-full transition-all" style={{ width: `${rankings[0] ? (item.points / rankings[0].points) * 100 : 0}%`, backgroundColor: item.user.color_hex }} />
                         </div>
                     </div>
                     <div className="text-right pl-4 border-l border-foreground/10">
@@ -88,7 +88,7 @@ export const Competition = () => {
     );
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 max-w-5xl mx-auto animate-in fade-in duration-700 pb-20">
+        <div className="p-4 sm:p-8 space-y-8 max-w-5xl mx-auto pb-20">
             <header className="text-center space-y-4">
                 <div className="inline-flex items-center gap-3 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-black uppercase tracking-[0.2em]">
                     <Trophy className="w-4 h-4" /> Ranking
@@ -112,7 +112,7 @@ export const Competition = () => {
 
             {/* Current Month */}
             {view === 'current' && (
-                <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="space-y-6">
                     <h2 className="text-2xl font-black uppercase italic tracking-tight">
                         <Flame className="w-6 h-6 text-primary inline mr-2" />
                         {today.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
@@ -123,7 +123,7 @@ export const Competition = () => {
 
             {/* Previous Months */}
             {view === 'previous' && (
-                <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="space-y-6">
                     {monthsWithData.length > 0 ? (
                         <>
                             <div className="flex flex-wrap gap-2">
@@ -150,7 +150,7 @@ export const Competition = () => {
 
             {/* Champions */}
             {view === 'champions' && (
-                <div className="space-y-4 animate-in fade-in duration-500">
+                <div className="space-y-4">
                     <h2 className="text-2xl font-black uppercase italic tracking-tight">
                         <Crown className="w-6 h-6 text-yellow-500 inline mr-2" />
                         Campeones Mensuales
@@ -184,7 +184,7 @@ export const Competition = () => {
 
             {/* All-Time */}
             {view === 'alltime' && (
-                <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="space-y-6">
                     <h2 className="text-2xl font-black uppercase italic tracking-tight">
                         <Star className="w-6 h-6 text-primary inline mr-2" />
                         Puntuación Histórica Total

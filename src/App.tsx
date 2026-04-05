@@ -44,8 +44,8 @@ const Sidebar = () => {
   return (
     <aside className="fixed left-0 top-0 h-full w-72 bg-panel border-r border-foreground/10 z-40 hidden lg:flex flex-col shadow-2xl">
       <div className="p-8 border-b border-foreground/10 flex flex-col items-center gap-6 bg-foreground/5 py-12 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-        <div className="p-4 bg-panel rounded-[2rem] shadow-2xl border border-foreground/10 group-hover:rotate-12 transition-transform duration-500 relative z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="p-4 bg-panel rounded-[2rem] shadow-2xl border border-foreground/10 group-hover:rotate-12 transition-transform relative z-10">
           <HomeIconComponent className="w-10 h-10" style={{ color: homeSettings?.themeColor || '#00FF88' }} />
         </div>
         <div className="text-center relative z-10 space-y-1">
@@ -68,7 +68,7 @@ const Sidebar = () => {
               <item.icon className={`w-5 h-5 ${location.pathname === item.path ? 'text-white' : 'group-hover:text-primary transition-colors'}`} />
               <span>{item.label}</span>
             </div>
-            {location.pathname === item.path && <ChevronRight className="w-4 h-4 animate-in slide-in-from-left-2" />}
+            {location.pathname === item.path && <ChevronRight className="w-4 h-4" />}
           </Link>
         ))}
       </nav>
@@ -120,7 +120,7 @@ const MobileNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-text-dim/40'}`}
+              className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors  ${isActive ? 'text-primary' : 'text-text-dim/40'}`}
             >
               <item.icon className="w-5 h-5" />
               <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
@@ -129,7 +129,7 @@ const MobileNav = () => {
         })}
         <Link
           to="/settings"
-          className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors duration-200 ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'}`}
+          className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors  ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'}`}
         >
           <SettingsIcon className="w-5 h-5" />
           <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
@@ -152,7 +152,7 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 space-y-8 animate-in fade-in duration-500">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 space-y-8">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/10 rounded-full scale-150 animate-pulse" />
           <div className="w-24 h-24 bg-panel border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center relative z-10 shadow-2xl">

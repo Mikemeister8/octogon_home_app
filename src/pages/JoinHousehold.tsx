@@ -25,7 +25,7 @@ export const JoinHousehold = () => {
 
     if (loading || status === 'joining' || status === 'checking') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background text-foreground space-y-8 animate-in fade-in duration-500">
+            <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background text-foreground space-y-8">
                 <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
                     <div className="w-24 h-24 bg-panel border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center relative z-10 shadow-2xl">
@@ -49,7 +49,7 @@ export const JoinHousehold = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground">
-            <div className="max-w-md w-full bg-panel border border-foreground/10 rounded-[3rem] p-10 text-center space-y-8 shadow-2xl animate-in fade-in zoom-in duration-700 relative overflow-hidden">
+            <div className="max-w-md w-full bg-panel border border-foreground/10 rounded-[3rem] p-10 text-center space-y-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 -mt-20 -mr-20 w-40 h-40 bg-primary/10 blur-[100px] rounded-full" />
 
                 <div className="w-24 h-24 bg-primary/20 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl relative z-10 mb-2">

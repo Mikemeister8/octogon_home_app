@@ -90,11 +90,11 @@ export const Tasks = () => {
     };
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 max-w-6xl mx-auto animate-in fade-in duration-700 pb-20">
+        <div className="p-4 sm:p-8 space-y-8 max-w-6xl mx-auto pb-20">
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-panel border border-foreground/10 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent pointer-events-none" />
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="bg-primary/20 p-5 rounded-[2.5rem] shrink-0 group-hover:rotate-12 transition-transform duration-500 shadow-lg border border-primary/20">
+                    <div className="bg-primary/20 p-5 rounded-[2.5rem] shrink-0 group-hover:rotate-12 transition-transform shadow-lg border border-primary/20">
                         <ListTodo className="w-10 h-10 text-primary" />
                     </div>
                     <div>
@@ -113,7 +113,7 @@ export const Tasks = () => {
             </header>
 
             {isAdding && (
-                <form onSubmit={handleSubmit} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-10 shadow-2xl space-y-8 animate-in slide-in-from-top-10 duration-500 overflow-hidden relative">
+                <form onSubmit={handleSubmit} className="bg-panel border border-foreground/10 rounded-[2.5rem] p-10 shadow-2xl space-y-8 overflow-hidden relative">
                     <div className="absolute top-0 right-0 -mt-20 -mr-20 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                         <div className="space-y-3">

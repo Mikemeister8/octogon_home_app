@@ -52,7 +52,7 @@ export const Shopping = () => {
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-panel border border-foreground/10 rounded-3xl p-8 shadow-md relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-accent/10 to-transparent pointer-events-none" />
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="bg-accent/20 p-5 rounded-[2rem] shrink-0 group-hover:scale-110 transition-transform duration-500 shadow-lg">
+                    <div className="bg-accent/20 p-5 rounded-[2rem] shrink-0 group-hover:scale-110 transition-transform shadow-lg">
                         <ShoppingCart className="w-10 h-10 text-accent" />
                     </div>
                     <div>
@@ -63,36 +63,46 @@ export const Shopping = () => {
             </header>
 
             <div className="relative group">
-                <form onSubmit={(e) => { e.preventDefault(); handleAdd(newItem); }} className="relative flex gap-2">
-                    <input
-                        type="number"
-                        min="1"
-                        value={quantity}
-                        onChange={e => setQuantity(Number(e.target.value))}
-                        className="w-24 bg-panel border border-foreground/10 rounded-2xl py-4 px-4 text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
-                    />
-                    <input
-                        type="text"
-                        value={newItem}
-                        onChange={e => handleInputChange(e.target.value)}
-                        placeholder="Escribe un producto..."
-                        className="flex-1 bg-panel border border-foreground/10 rounded-2xl py-4 px-6 text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm placeholder:opacity-30"
-                    />
-                    <button type="submit" disabled={!newItem.trim()} className="px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl transition-all shadow-sm active:scale-95 disabled:opacity-30 flex items-center justify-center">
-                        <Plus className="w-6 h-6" />
-                    </button>
+                <form onSubmit={(e) => { e.preventDefault(); handleAdd(newItem); }} className="relative flex flex-col sm:flex-row gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <input
+                            type="number"
+                            min="1"
+                            value={quantity}
+                            onChange={e => setQuantity(Number(e.target.value))}
+                            className="w-20 bg-panel border border-foreground/10 rounded-2xl py-3 sm:py-4 px-3 text-base sm:text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
+                        />
+                        <button type="submit" disabled={!newItem.trim()} className="sm:hidden px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl transition-all shadow-sm active:scale-95 disabled:opacity-30 flex items-center justify-center grow">
+                            Añadir
+                        </button>
+                    </div>
+                    <div className="flex gap-2 flex-1 w-full">
+                        <input
+                            type="text"
+                            value={newItem}
+                            onChange={e => handleInputChange(e.target.value)}
+                            placeholder="Escribe un producto..."
+                            className="flex-1 bg-panel border border-foreground/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-base sm:text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm placeholder:opacity-30 w-full min-w-0"
+                        />
+                        <button type="submit" disabled={!newItem.trim()} className="hidden sm:flex px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl transition-all shadow-sm active:scale-95 disabled:opacity-30 items-center justify-center shrink-0">
+                            <Plus className="w-6 h-6" />
+                        </button>
+                    </div>
                 </form>
 
                 {suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-panel border border-foreground/10 rounded-2xl shadow-2xl z-20 overflow-hidden divide-y divide-foreground/5 animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-panel border border-foreground/10 rounded-2xl shadow-2xl z-20 overflow-hidden divide-y divide-foreground/5">
                         {suggestions.map(s => (
                             <button
                                 key={s.id}
-                                onClick={() => handleAdd(s.name)}
+                                type="button"
+                                onClick={() => {
+                                    setNewItem(s.name);
+                                    setSuggestions([]);
+                                }}
                                 className="w-full text-left p-4 hover:bg-primary/10 hover:text-primary transition-all font-bold flex items-center justify-between group"
                             >
                                 {s.name}
-                                <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100" />
                             </button>
                         ))}
                     </div>

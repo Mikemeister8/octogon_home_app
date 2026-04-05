@@ -159,7 +159,7 @@ export const Meals = () => {
 
             {/* Modal para Editar/Crear Comida */}
             {editingCell && editModeBloc && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 animate-in fade-in">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
                     <div className="bg-panel border border-foreground/10 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-6 relative">
                         <div className="flex justify-between items-center border-b border-foreground/10 pb-4">
                             <div>

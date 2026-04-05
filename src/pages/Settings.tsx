@@ -95,10 +95,10 @@ export const Settings = () => {
     };
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+        <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto pb-20">
             <header className="flex flex-col sm:flex-row sm:items-center gap-6 bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent pointer-events-none" />
-                <div className="bg-primary/20 p-5 rounded-[2rem] relative z-10 shrink-0 group-hover:rotate-45 transition-transform duration-700">
+                <div className="bg-primary/20 p-5 rounded-[2rem] relative z-10 shrink-0 group-hover:rotate-45 transition-transform">
                     <SettingsIcon className="w-10 h-10 text-primary" />
                 </div>
                 <div className="relative z-10">
