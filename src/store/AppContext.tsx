@@ -110,14 +110,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, []);
 
     const fetchUserData = async (userId: string) => {
+        console.log("FETCH USER DATA - Sincronizando datos para:", userId);
         try {
             // Only show loader if we don't have cached data ensuring a 0-sec load time
             if (!currentUser || !homeSettings) setLoading(true);
-            const { data: profile, error: pError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
+            
+            const fetchPromise = async () => {
+                const { data: profile, error: pError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+                return { profile, pError };
+            };
+
+            const { profile, pError }: any = await Promise.race([
+                fetchPromise(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout al obtener perfil")), 10000))
+            ]);
 
             if (pError || !profile) {
                 // Profile missing - NEVER create automatically.
@@ -204,28 +214,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.log("---- SETUP PROFILE CHECKPOINTS ----");
             console.log("STEP 1: setupProfile START", userId);
             try {
-                const pendingInvite = localStorage.getItem('pendingInvite');
-                console.log("STEP 2: pendingInvite found", pendingInvite);
+                const pendingInviteRaw = localStorage.getItem('pendingInvite');
+                const pendingInvite = pendingInviteRaw?.trim();
+                console.log("STEP 2: pendingInvite found and trimmed", pendingInvite);
                 if (!pendingInvite) throw new Error("No hay invitación pendiente.");
 
-                console.log("STEP 3: Buscando hogar en BD...");
+                console.log("LOG: STEP 3 - Buscando invitación en BD...");
+                console.log("LOG: Valor de búsqueda (inviteId):", pendingInvite);
+                
                 const { data: inviteHome, error: fetchError } = await supabase
                     .from('households')
                     .select('*')
                     .or(`invitation_id.eq.${pendingInvite},household_invitation_id.eq.${pendingInvite},households_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
                     .maybeSingle();
 
+                console.log("LOG: Resultado Query BD:", inviteHome);
+                console.log("LOG: Error Query BD:", fetchError);
+
                 if (fetchError) {
-                    console.error("STEP 3 ERROR: Fetch Error", fetchError);
+                    console.error("LOG: CRITICAL ERROR STEP 3 - Fetch failed", fetchError);
                     throw fetchError;
                 }
+                
                 if (!inviteHome) {
-                    console.error("STEP 3 ERROR: No inviteHome found");
-                    throw new Error("Invitación no válida.");
+                    console.error("LOG: STEP 3 FAIL - Invitación NO encontrada en BD para ID:", pendingInvite);
+                    throw new Error("INVITE_NOT_FOUND: No se ha encontrado ningún hogar con ese código.");
                 }
 
-                console.log("STEP 4: Match HOGAR", inviteHome.id);
-                console.log("STEP 5: Upserting Profile...");
+                console.log("LOG: STEP 4 - Hogar encontrado con éxito:", inviteHome.id);
+                console.log("LOG: STEP 5 - Insertando perfil de usuario...");
                 const { error: profileError } = await supabase.from('profiles').upsert({
                     id: userId, 
                     household_id: inviteHome.id, 
@@ -300,32 +317,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
             return id;
         },
-        joinSpaceByInviteLink: async (inviteId: string) => {
+        joinSpaceByInviteLink: async (inviteIdRaw: string) => {
+            const inviteId = inviteIdRaw.trim();
             console.log("---- JOIN FLOW CHECKPOINTS ----");
-            console.log("STEP 1: iniciando joinSpaceByInviteLink", inviteId);
+            console.log("STEP 1: iniciando joinSpaceByInviteLink con ID sanitizado", inviteId);
             
             const joinSubStep = async () => {
                 console.log("STEP 2: usuario actual", currentUser?.id);
                 if (!currentUser) throw new Error("Debes estar logueado para unirte.");
 
-                console.log("STEP 3: buscando invite en BD...");
+                console.log("LOG: STEP 3 - Buscando invitación en BD...");
+                console.log("LOG: Valor de búsqueda (inviteId o Code):", inviteId);
+                
                 const { data: inviteHome, error: fetchError } = await supabase
                     .from('households')
                     .select('*')
                     .or(`invitation_id.eq.${inviteId},household_invitation_id.eq.${inviteId},households_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
                     .maybeSingle();
 
+                console.log("LOG: Resultado Query BD:", inviteHome);
+                console.log("LOG: Error Query BD:", fetchError);
+
                 if (fetchError) {
-                    console.error("STEP 3 ERROR: fetch error", fetchError);
+                    console.error("LOG: CRITICAL ERROR STEP 3 - Fetch failed", fetchError);
                     throw fetchError;
                 }
+                
                 if (!inviteHome) {
-                    console.error("STEP 3 ERROR: inviteHome es null");
-                    throw new Error("No se encontró ningún hogar con ese código.");
+                    console.error("LOG: STEP 3 FAIL - Invitación NO encontrada en BD para ID:", inviteId);
+                    throw new Error("INVITE_NOT_FOUND: El código introducido no existe o ha expirado.");
                 }
 
-                console.log("STEP 4: invite encontrado en hogar id", inviteHome.id);
-                console.log("STEP 5: insertando/actualizando perfil...");
+                console.log("LOG: STEP 4 - Invitación válida para hogar:", inviteHome.name, "(ID:", inviteHome.id, ")");
+                console.log("LOG: STEP 5 - Asignando hogar al perfil del usuario...");
                 
                 const { error: profileError } = await supabase.from('profiles').upsert({
                     id: currentUser.id,
@@ -334,15 +358,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 });
 
                 if (profileError) {
-                    console.error("STEP 5 ERROR: Profile Error", profileError);
+                    console.error("LOG: STEP 5 FAIL - Error al insertar perfil", profileError);
                     throw profileError;
                 }
 
-                console.log("STEP 6: Perfil actualizado OK");
-                console.log("STEP 7: obteniendo datos completos del hogar...");
+                console.log("LOG: STEP 6 - Perfil vinculado correctamente");
+                console.log("LOG: STEP 7 - Sincronizando datos finales...");
                 await fetchUserData(currentUser.id);
                 
-                console.log("STEP 8: FIN join (Success)");
+                console.log("LOG: STEP 8 - TODO OK - Usuario unido correctamente.");
             };
 
             try {
