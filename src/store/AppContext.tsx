@@ -66,10 +66,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenu[]>([]);
     const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>(() => JSON.parse(localStorage.getItem('octo_cache_concepts') || '[]'));
     const [needsProfileSetup, setNeedsProfileSetup] = useState<string | null>(null);
-    // If we have cached user and settings, we can bypass the initial loading screen instantly!
     const [loading, setLoading] = useState(!(localStorage.getItem('octo_cache_user') && localStorage.getItem('octo_cache_settings')));
 
-    // Persist states to local storage automatically
     useEffect(() => { if (currentUser) localStorage.setItem('octo_cache_user', JSON.stringify(currentUser)); else localStorage.removeItem('octo_cache_user'); }, [currentUser]);
     useEffect(() => { if (homeSettings) localStorage.setItem('octo_cache_settings', JSON.stringify(homeSettings)); else localStorage.removeItem('octo_cache_settings'); }, [homeSettings]);
     useEffect(() => { localStorage.setItem('octo_cache_users', JSON.stringify(users)); }, [users]);
@@ -79,7 +77,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => { localStorage.setItem('octo_cache_shops', JSON.stringify(shoppingItems)); }, [shoppingItems]);
     useEffect(() => { localStorage.setItem('octo_cache_concepts', JSON.stringify(shoppingConcepts)); }, [shoppingConcepts]);
 
-    // Initial session load
     useEffect(() => {
         let isFetching = false;
         const checkSession = async () => {
@@ -94,7 +91,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-            // Skip if checkSession already handled it
             if (isFetching && event === 'INITIAL_SESSION') return;
             if (session?.user) {
                 await fetchUserData(session.user.id);
@@ -112,7 +108,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fetchUserData = async (userId: string) => {
         console.log("FETCH USER DATA - Sincronizando datos para:", userId);
         try {
-            // Only show loader if we don't have cached data ensuring a 0-sec load time
             if (!currentUser || !homeSettings) setLoading(true);
             
             const fetchPromise = async () => {
@@ -130,16 +125,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ]);
 
             if (pError || !profile) {
-                // Profile missing - NEVER create automatically.
-                // Just signal that setup is needed.
                 const { data: { session } } = await supabase.auth.getSession();
-                console.log("FETCH USER DATA - User has no profile, needs setup:", userId);
-                
-                if (session?.user) {
-                    setNeedsProfileSetup(session.user.id);
-                } else {
-                    setCurrentUser(null);
-                }
+                if (session?.user) setNeedsProfileSetup(session.user.id);
+                else setCurrentUser(null);
                 setLoading(false);
                 return;
             }
@@ -147,41 +135,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const mappedUser: User = {
                 id: profile.id,
                 email: '',
-                full_name: profile.full_name || profile.fullName || 'Nuevo Miembro',
-                avatar_url: profile.avatar_url || profile.avatarUrl || '',
-                color_hex: profile.color_hex || profile.colorHex || '#00FF88',
-                theme: (profile.theme as 'cyber' | 'light' | 'octogon') || 'cyber',
+                full_name: profile.full_name || 'Nuevo Miembro',
+                avatar_url: profile.avatar_url || '',
+                color_hex: profile.color_hex || '#00FF88',
+                theme: (profile.theme as any) || 'cyber',
                 household_id: profile.household_id
             };
 
             setCurrentUser(mappedUser);
 
             if (profile.household_id) {
-                const [hRes, usersRes, tasksRes, compRes, remRes, shopRes] = await Promise.all([
+                const [hRes, usersRes, tasksRes, compRes, remRes, shopRes, invRes] = await Promise.all([
                     supabase.from('households').select('*').eq('id', profile.household_id).single(),
                     supabase.from('profiles').select('*').eq('household_id', profile.household_id),
                     supabase.from('tasks').select('*').eq('household_id', profile.household_id),
                     supabase.from('task_completions').select('*').in('user_id', [profile.id]),
                     supabase.from('reminders').select('*').eq('household_id', profile.household_id),
-                    supabase.from('shopping_items').select('*').eq('household_id', profile.household_id)
+                    supabase.from('shopping_items').select('*').eq('household_id', profile.household_id),
+                    supabase.from('invitations').select('code').eq('household_id', profile.household_id).order('created_at', { ascending: false }).limit(1).maybeSingle()
                 ]);
 
                 if (hRes.data) {
                     setHomeSettings({ 
                         ...hRes.data, 
-                        themeColor: hRes.data.theme_color || hRes.data.themeColor || '#00FF88',
-                        token_name: hRes.data.token_name || hRes.data.tokenName || 'Puntos',
-                        householdInvitationId: hRes.data.invitation_id || hRes.data.household_invitation_id || hRes.data.householdInvitationId
+                        themeColor: hRes.data.theme_color || '#00FF88',
+                        token_name: hRes.data.token_name || 'Puntos',
+                        householdInvitationId: invRes.data?.code,
+                        invitation_id: invRes.data?.code
                     });
                 }
-                if (usersRes.data) setUsers(usersRes.data.map((u) => ({
-                    id: u.id,
-                    email: '',
-                    avatar_url: u.avatar_url || '',
-                    household_id: u.household_id,
-                    full_name: u.full_name,
-                    color_hex: u.color_hex,
-                    theme: (u.theme as 'cyber' | 'light' | 'octogon') || 'cyber'
+                if (usersRes.data) setUsers(usersRes.data.map((u: any) => ({
+                    id: u.id, email: '', avatar_url: u.avatar_url || '', household_id: u.household_id,
+                    full_name: u.full_name, color_hex: u.color_hex, theme: u.theme || 'cyber'
                 })));
                 if (tasksRes.data) setTasks(tasksRes.data);
                 if (compRes.data) setCompletions(compRes.data);
@@ -207,82 +192,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             await supabase.from('households').update({ token_name: name }).eq('id', homeSettings.id);
             setHomeSettings({ ...homeSettings, token_name: name });
         },
-        users,
-        loading,
-        needsProfileSetup,
+        users, loading, needsProfileSetup,
         setupProfile: async (userId: string, name: string) => {
-            console.log("---- SETUP PROFILE CHECKPOINTS ----");
-            console.log("STEP 1: setupProfile START", userId);
+            console.log("LOG: setupProfile START", userId);
             try {
                 const pendingInviteRaw = localStorage.getItem('pendingInvite');
                 const pendingInvite = pendingInviteRaw?.trim();
-                console.log("STEP 2: pendingInvite found and trimmed", pendingInvite);
                 if (!pendingInvite) throw new Error("No hay invitación pendiente.");
 
-                console.log("LOG: STEP 3 - Buscando invitación en BD...");
-                console.log("LOG: Valor de búsqueda (inviteId):", pendingInvite);
-                
-                const { data: inviteHome, error: fetchError } = await supabase
-                    .from('households')
+                const { data: invite, error: fetchError } = await supabase
+                    .from('invitations')
                     .select('*')
-                    .or(`invitation_id.eq.${pendingInvite},household_invitation_id.eq.${pendingInvite},households_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
+                    .eq('code', pendingInvite)
                     .maybeSingle();
 
-                console.log("LOG: Resultado Query BD:", inviteHome);
-                console.log("LOG: Error Query BD:", fetchError);
+                if (fetchError || !invite) throw new Error("Invitación no válida.");
 
-                if (fetchError) {
-                    console.error("LOG: CRITICAL ERROR STEP 3 - Fetch failed", fetchError);
-                    throw fetchError;
-                }
-                
-                if (!inviteHome) {
-                    console.error("LOG: STEP 3 FAIL - Invitación NO encontrada en BD para ID:", pendingInvite);
-                    throw new Error("INVITE_NOT_FOUND: No se ha encontrado ningún hogar con ese código.");
-                }
+                // 1. Memberships
+                await supabase.from('memberships').upsert({ user_id: userId, household_id: invite.household_id });
 
-                console.log("LOG: STEP 4 - Hogar encontrado con éxito:", inviteHome.id);
-                console.log("LOG: STEP 5 - Insertando perfil de usuario...");
+                // 2. Profiles
                 const { error: profileError } = await supabase.from('profiles').upsert({
-                    id: userId, 
-                    household_id: inviteHome.id, 
-                    full_name: name || 'Nuevo Miembro'
+                    id: userId, household_id: invite.household_id, full_name: name || 'Nuevo Miembro'
                 });
 
-                if (profileError) {
-                    console.error("STEP 5 ERROR: Profile Error", profileError);
-                    throw profileError;
-                }
+                if (profileError) throw profileError;
 
-                console.log("STEP 6: Profile Upserted OK");
                 localStorage.removeItem('pendingInvite');
                 setNeedsProfileSetup(null);
-                
-                console.log("STEP 7: Fetching all user data...");
                 await fetchUserData(userId);
-                console.log("STEP 8: SETUP COMPLETE");
             } catch (err: any) {
-                console.error("---- SETUP PROFILE FAILED AT STEP " + (err.step || '?') + " ----", err);
+                console.error("Setup Profile Failed:", err);
                 throw err;
             }
         },
         createHousehold: async (userId: string, name: string) => {
-            console.log("CREATE HOUSEHOLD START - User:", userId);
             try {
-                const { data: household, error: hError } = await supabase
-                    .from('households')
-                    .insert({ name: name || "Mi Hogar" })
-                    .select().single();
-                
+                const { data: household, error: hError } = await supabase.from('households').insert({ name: name || "Mi Hogar" }).select().single();
                 if (hError) throw hError;
 
-                const { error: profileError } = await supabase.from('profiles').upsert({
-                    id: userId, 
-                    household_id: household.id, 
-                    full_name: name || 'Jefe de Hogar'
-                });
-
-                if (profileError) throw profileError;
+                await supabase.from('memberships').insert({ user_id: userId, household_id: household.id });
+                await supabase.from('profiles').upsert({ id: userId, household_id: household.id, full_name: name || 'Jefe de Hogar' });
 
                 setNeedsProfileSetup(null);
                 await fetchUserData(userId);
@@ -294,97 +244,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         generateInviteId: async () => {
             if (!homeSettings) return '';
             const id = Math.random().toString(36).substring(2, 11).toUpperCase();
-            
-            const { error: updateError } = await supabase.from('households').update({ 
-                invitation_id: id,
-                household_invitation_id: id,
-                householdInvitationId: id
-            }).eq('id', homeSettings.id);
+            const { error: updateError } = await supabase.from('invitations').insert({ code: id, household_id: homeSettings.id });
+            if (updateError) throw updateError;
 
-            if (updateError) {
-                console.error("Error generating invite:", updateError);
-                // Try just one if the above failed
-                await supabase.from('households').update({ 
-                    invitation_id: id 
-                }).eq('id', homeSettings.id);
-            }
-
-            setHomeSettings({ 
-                ...homeSettings, 
-                invitation_id: id,
-                householdInvitationId: id,
-                household_invitation_id: id 
-            });
+            setHomeSettings({ ...homeSettings, invitation_id: id, householdInvitationId: id });
             return id;
         },
         joinSpaceByInviteLink: async (inviteIdRaw: string) => {
             const inviteId = inviteIdRaw.trim();
-            console.log("---- JOIN FLOW CHECKPOINTS ----");
-            console.log("STEP 1: iniciando joinSpaceByInviteLink con ID sanitizado", inviteId);
-            
             const joinSubStep = async () => {
-                console.log("STEP 2: usuario actual", currentUser?.id);
                 if (!currentUser) throw new Error("Debes estar logueado para unirte.");
+                const { data: invite, error: fetchError } = await supabase.from('invitations').select('*').eq('code', inviteId).maybeSingle();
 
-                console.log("LOG: STEP 3 - Buscando invitación en BD...");
-                console.log("LOG: Valor de búsqueda (inviteId o Code):", inviteId);
-                
-                const { data: inviteHome, error: fetchError } = await supabase
-                    .from('households')
-                    .select('*')
-                    .or(`invitation_id.eq.${inviteId},household_invitation_id.eq.${inviteId},households_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
-                    .maybeSingle();
+                if (fetchError || !invite) throw new Error("Invitación no válida.");
 
-                console.log("LOG: Resultado Query BD:", inviteHome);
-                console.log("LOG: Error Query BD:", fetchError);
-
-                if (fetchError) {
-                    console.error("LOG: CRITICAL ERROR STEP 3 - Fetch failed", fetchError);
-                    throw fetchError;
-                }
-                
-                if (!inviteHome) {
-                    console.error("LOG: STEP 3 FAIL - Invitación NO encontrada en BD para ID:", inviteId);
-                    throw new Error("INVITE_NOT_FOUND: El código introducido no existe o ha expirado.");
-                }
-
-                console.log("LOG: STEP 4 - Invitación válida para hogar:", inviteHome.name, "(ID:", inviteHome.id, ")");
-                console.log("LOG: STEP 5 - Asignando hogar al perfil del usuario...");
-                
+                await supabase.from('memberships').upsert({ user_id: currentUser.id, household_id: invite.household_id });
                 const { error: profileError } = await supabase.from('profiles').upsert({
-                    id: currentUser.id,
-                    household_id: inviteHome.id,
-                    full_name: currentUser.full_name || 'Nuevo Miembro'
+                    id: currentUser.id, household_id: invite.household_id, full_name: currentUser.full_name || 'Nuevo Miembro'
                 });
 
-                if (profileError) {
-                    console.error("LOG: STEP 5 FAIL - Error al insertar perfil", profileError);
-                    throw profileError;
-                }
-
-                console.log("LOG: STEP 6 - Perfil vinculado correctamente");
-                console.log("LOG: STEP 7 - Sincronizando datos finales...");
+                if (profileError) throw profileError;
                 await fetchUserData(currentUser.id);
-                
-                console.log("LOG: STEP 8 - TODO OK - Usuario unido correctamente.");
             };
 
-            try {
-                // Mandatory 10s Timeout
-                await Promise.race([
-                    joinSubStep(),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error("TIMEOUT: El servidor no responde al vincular el hogar.")), 10000)
-                    )
-                ]);
-                console.log("STEP 9: joinSpaceByInviteLink FINALIZADO OK");
-            } catch (err: any) {
-                console.error("---- JOIN FAILED ----", err);
-                throw err;
-            }
+            await Promise.race([
+                joinSubStep(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout al vincular hogar")), 10000))
+            ]);
         },
-        shoppingConcepts,
-        tasks,
+        shoppingConcepts, tasks,
         addTask: async (t) => {
             if (!homeSettings) return;
             const { data, error } = await supabase.from('tasks').insert({ ...t, household_id: homeSettings.id }).select().single();
@@ -422,7 +310,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!homeSettings) return;
             const { data, error } = await supabase.from('shopping_items').insert({ name, created_by: userId, household_id: homeSettings.id }).select().single();
             if (data && !error) setShoppingItems(prev => [...prev, data]);
-            if (error) console.error("Error adding shopping item:", error);
         },
         updateShoppingItem: async (si) => {
             await supabase.from('shopping_items').update(si).eq('id', si.id);
@@ -448,16 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout: async () => {
             await supabase.auth.signOut();
             setCurrentUser(null);
-            localStorage.removeItem('pendingInvite');
-            localStorage.removeItem('octo_cache_user');
-            localStorage.removeItem('octo_cache_settings');
-            localStorage.removeItem('octo_cache_users');
-            localStorage.removeItem('octo_cache_tasks');
-            localStorage.removeItem('octo_cache_comps');
-            localStorage.removeItem('octo_cache_rems');
-            localStorage.removeItem('octo_cache_shops');
-            localStorage.removeItem('octo_cache_concepts');
-            localStorage.removeItem('octo_active_menu');
+            localStorage.clear();
         },
         resetAllData: async () => {
             if (!homeSettings) return;
