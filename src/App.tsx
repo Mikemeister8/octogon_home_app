@@ -140,11 +140,8 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, loading, needsProfileSetup, setupProfile, logout } = useAppContext();
+  const { currentUser, loading } = useAppContext();
   const location = useLocation();
-  const [setupName, setSetupName] = useState('');
-  const [setupLoading, setSetupLoading] = useState(false);
-  const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -171,62 +168,6 @@ const AppContent = () => {
     );
   }
 
-  if (needsProfileSetup) {
-    const hasPendingInvite = !!sessionStorage.getItem('pendingInvite');
-    const handleSetup = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!setupName.trim()) return;
-      setSetupLoading(true);
-      setSetupError(null);
-      try {
-        await setupProfile(needsProfileSetup, setupName);
-      } catch (err: any) {
-        setSetupError(err.message || 'Error al crear el perfil. Por favor, reinténtalo.');
-        setSetupLoading(false);
-      }
-    };
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl space-y-6">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center">
-              <UserPlus className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-2xl font-black text-foreground">¡Casi listo!</h1>
-            <p className="text-text-dim text-sm">
-              {hasPendingInvite
-                ? 'Solo falta tu nombre para unirte al hogar al que fuiste invitado.'
-                : 'Tu cuenta existe pero necesitas completar tu perfil para acceder.'}
-            </p>
-          </div>
-
-          {setupError && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-medium">
-              {setupError}
-            </div>
-          )}
-          <form onSubmit={handleSetup} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Tu Nombre</label>
-              <input required value={setupName} onChange={e => setSetupName(e.target.value)}
-                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary font-bold"
-                placeholder="Ej: Miguel" autoFocus />
-            </div>
-            <button disabled={setupLoading || !setupName.trim()} className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-              {setupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar al Hogar'}
-            </button>
-          </form>
-
-          <button 
-            onClick={() => logout()}
-            className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-red-500 transition-colors"
-          >
-            Cerrar Sesión y salir
-          </button>
-        </div>
-      </div>
-    );
-  }
   if (!currentUser && !location.pathname.startsWith('/join')) {
     return (
       <Routes>

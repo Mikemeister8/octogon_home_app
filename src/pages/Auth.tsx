@@ -9,8 +9,6 @@ export const Auth = () => {
     // Form fields
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [userName, setUserName] = useState('');
-    const [homeName, setHomeName] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -26,7 +24,7 @@ export const Auth = () => {
 
         try {
             // 1. Sign up user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            const { error: authError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -35,52 +33,10 @@ export const Auth = () => {
             });
 
             if (authError) throw authError;
-            if (!authData.user) throw new Error("No se pudo crear el usuario.");
 
-            let finalHouseholdId = null;
-
-            if (pendingInvite) {
-                const { data: inviteHome } = await supabase.from('households').select('id').eq('householdInvitationId', pendingInvite).single();
-                if (inviteHome) finalHouseholdId = inviteHome.id;
-            }
-
-            if (!finalHouseholdId) {
-                // 2. Create Household with minimal columns to avoid schema errors
-                const { data: household, error: hError } = await supabase
-                    .from('households')
-                    .insert({
-                        name: homeName || (userName || "Mi Hogar"),
-                    })
-                    .select()
-                    .single();
-
-                if (hError) throw hError;
-                finalHouseholdId = household.id;
-            }
-
-            // 3. Create Profile with minimal columns
-            const { error: pError } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: authData.user.id,
-                    household_id: finalHouseholdId,
-                    full_name: userName || 'Nuevo Miembro',
-                });
-
-            if (pError) throw pError;
-
-            // Success! Now we can clear the invite
-            if (pendingInvite) sessionStorage.removeItem('pendingInvite');
-
-            // If Supabase auto-confirmed the email, session is set immediately - go to home!
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                // Session active: navigate directly, AppContext will pick it up
-                window.location.href = '/';
-            } else {
-                // Email confirmation required
-                setNeedsVerification(true);
-            }
+            // Simple navigation to home. AppContext detects the session and
+            // handles profile creation (with auto-joining invite if present).
+            window.location.href = '/';
         } catch (err: any) {
             setError(err.message || 'Error en el registro');
         } finally {
@@ -255,55 +211,32 @@ export const Auth = () => {
                                 {pendingInvite ? 'Unirse al Hogar' : 'Nuevo Hogar'}
                             </h2>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Email</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                                            <input
-                                                required type="email"
-                                                value={email} onChange={e => setEmail(e.target.value)}
-                                                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
-                                                placeholder="correo@ejemplo.com"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Contraseña</label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                                            <input
-                                                required type="password"
-                                                value={password} onChange={e => setPassword(e.target.value)}
-                                                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
-                                                placeholder="••••••"
-                                            />
-                                        </div>
-                                    </div>
-                                    
-                                    {!pendingInvite && (
-                                        <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Email</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
                                                 <input
-                                                    required
-                                                    value={userName} onChange={e => setUserName(e.target.value)}
-                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                                                    placeholder="Miguel"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Nombre del Hogar</label>
-                                                <input
-                                                    required
-                                                    value={homeName} onChange={e => setHomeName(e.target.value)}
-                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                                                    placeholder="Ej: Familia García"
+                                                    required type="email"
+                                                    value={email} onChange={e => setEmail(e.target.value)}
+                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
+                                                    placeholder="correo@ejemplo.com"
                                                 />
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Contraseña</label>
+                                            <div className="relative">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
+                                                <input
+                                                    required type="password"
+                                                    value={password} onChange={e => setPassword(e.target.value)}
+                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
+                                                    placeholder="••••••"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
                             <button disabled={loading} className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
                                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {pendingInvite ? 'Unirme al Hogar' : 'Crear Hogar'}</>}

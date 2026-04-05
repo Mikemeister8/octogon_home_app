@@ -119,7 +119,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 .single();
 
             if (pError || !profile) {
-                // Profile doesn't exist yet - show setup screen instead of redirect loop
+                // Profile missing - can we create it automatically?
+                const pendingInvite = sessionStorage.getItem('pendingInvite');
+                if (pendingInvite) {
+                    const { data: inviteHome } = await supabase.from('households').select('id').eq('householdInvitationId', pendingInvite).single();
+                    if (inviteHome) {
+                        // Create profile silently
+                        await supabase.from('profiles').upsert({
+                            id: userId,
+                            household_id: inviteHome.id,
+                            full_name: 'Nuevo Miembro'
+                        });
+                        sessionStorage.removeItem('pendingInvite');
+                        // Retry fetch
+                        return fetchUserData(userId);
+                    }
+                }
+
+                // No invitation found? Create a default household siliently
+                const { data: household } = await supabase.from('households').insert({ name: 'Mi Hogar' }).select().single();
+                if (household) {
+                    await supabase.from('profiles').upsert({
+                        id: userId,
+                        household_id: household.id,
+                        full_name: 'Nuevo Miembro'
+                    });
+                    return fetchUserData(userId);
+                }
+
+                // Fallback for safety
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     setNeedsProfileSetup(session.user.id);
