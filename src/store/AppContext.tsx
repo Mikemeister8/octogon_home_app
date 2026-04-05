@@ -161,7 +161,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         ...hRes.data, 
                         themeColor: hRes.data.theme_color || hRes.data.themeColor || '#00FF88',
                         token_name: hRes.data.token_name || hRes.data.tokenName || 'Puntos',
-                        householdInvitationId: hRes.data.household_invitation_id || hRes.data.householdInvitationId
+                        householdInvitationId: hRes.data.invitation_id || hRes.data.household_invitation_id || hRes.data.householdInvitationId
                     });
                 }
                 if (usersRes.data) setUsers(usersRes.data.map((u) => ({
@@ -212,7 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const { data: inviteHome, error: fetchError } = await supabase
                     .from('households')
                     .select('*')
-                    .or(`household_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
+                    .or(`invitation_id.eq.${pendingInvite},household_invitation_id.eq.${pendingInvite},households_invitation_id.eq.${pendingInvite},householdInvitationId.eq.${pendingInvite}`)
                     .maybeSingle();
 
                 if (fetchError) {
@@ -278,22 +278,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!homeSettings) return '';
             const id = Math.random().toString(36).substring(2, 11).toUpperCase();
             
-            // Try updating with both common naming conventions to be safe
             const { error: updateError } = await supabase.from('households').update({ 
+                invitation_id: id,
                 household_invitation_id: id,
                 householdInvitationId: id
             }).eq('id', homeSettings.id);
 
             if (updateError) {
                 console.error("Error generating invite:", updateError);
-                // Try just one if the above failed due to non-existent column
+                // Try just one if the above failed
                 await supabase.from('households').update({ 
-                    household_invitation_id: id 
+                    invitation_id: id 
                 }).eq('id', homeSettings.id);
             }
 
             setHomeSettings({ 
                 ...homeSettings, 
+                invitation_id: id,
                 householdInvitationId: id,
                 household_invitation_id: id 
             });
@@ -311,7 +312,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const { data: inviteHome, error: fetchError } = await supabase
                     .from('households')
                     .select('*')
-                    .or(`household_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
+                    .or(`invitation_id.eq.${inviteId},household_invitation_id.eq.${inviteId},households_invitation_id.eq.${inviteId},householdInvitationId.eq.${inviteId}`)
                     .maybeSingle();
 
                 if (fetchError) {

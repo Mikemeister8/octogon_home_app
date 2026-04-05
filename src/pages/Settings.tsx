@@ -351,7 +351,7 @@ export const Settings = () => {
                         Envía el enlace directo para que entren al registrarse, o dales el código si ya tienen cuenta.
                     </p>
 
-                    {!homeSettings.householdInvitationId && !homeSettings.household_invitation_id ? (
+                    {!homeSettings.invitation_id && !homeSettings.householdInvitationId && !homeSettings.household_invitation_id ? (
                         <button 
                             onClick={async () => {
                                 setIsSaving(true);
@@ -370,11 +370,11 @@ export const Settings = () => {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Enlace de Unión Directa</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 truncate text-[11px] font-mono text-accent">
-                                        {window.location.host}/join/{homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                        {window.location.host}/join/{homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}
                                     </div>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.householdInvitationId || homeSettings.household_invitation_id}`);
+                                            navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}`);
                                             alert('¡Enlace de unión copiado!');
                                         }}
                                         className="shrink-0 p-3 bg-accent text-white rounded-xl hover:bg-accent/90 transition-all active:scale-90"
@@ -389,11 +389,11 @@ export const Settings = () => {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Código de Hogar (Para Unirse Manualmente)</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 text-center text-lg font-black tracking-[0.3em] text-foreground uppercase">
-                                        {homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                        {homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}
                                     </div>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(homeSettings.householdInvitationId || homeSettings.household_invitation_id || '');
+                                            navigator.clipboard.writeText(homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id || '');
                                             alert('¡Código de hogar copiado!');
                                         }}
                                         className="shrink-0 p-3 bg-foreground text-panel rounded-xl hover:bg-foreground/80 transition-all active:scale-90"

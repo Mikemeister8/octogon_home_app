@@ -36,8 +36,9 @@ export interface HomeSettings {
     logo?: string;
     themeColor?: string;
     theme_color?: string;
-    householdInvitationId?: string;
+    invitation_id?: string;
     household_invitation_id?: string;
+    householdInvitationId?: string;
     token_name?: string;
     tokenName?: string;
 }
