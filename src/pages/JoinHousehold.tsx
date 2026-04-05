@@ -13,19 +13,24 @@ export const JoinHousehold = () => {
     useEffect(() => {
         const join = async () => {
             if (inviteId && currentUser) {
-                console.log("JOIN START - Logged In User:", currentUser.id, "Invite:", inviteId);
+                console.log("---- JOIN COMPONENT LOGS ----");
+                console.log("LOG: Iniciando proceso de unión en componente");
+                console.log("LOG: User ID:", currentUser.id);
+                console.log("LOG: Invite ID de la URL:", inviteId);
+                
                 setStatus('joining');
                 try {
+                    console.log("LOG: Llamando a joinSpaceByInviteLink()...");
                     await joinSpaceByInviteLink(inviteId);
-                    console.log("JOIN FLOW COMPLETED for existing user.");
+                    console.log("LOG: joinSpaceByInviteLink() retornó con éxito");
                     setStatus('success');
                 } catch (err: any) {
-                    console.error("Error joining household:", err);
+                    console.error("LOG: ERROR en componente JoinHousehold", err);
                     setError(err.message || "No se ha podido vincular el hogar. Comprueba que el código es correcto.");
                     setStatus('error');
                 }
             } else if (!loading && !currentUser) {
-                console.log("INVITE ID RECIBIDO en Link:", inviteId);
+                console.log("LOG: Usuario no logueado. Guardando invite y redirigiendo a /auth");
                 localStorage.setItem('pendingInvite', inviteId || '');
                 navigate('/auth');
             }
