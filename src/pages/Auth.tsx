@@ -45,13 +45,11 @@ export const Auth = () => {
             }
 
             if (!finalHouseholdId) {
-                // 2. Create Household with defaults if no invite is present
+                // 2. Create Household with minimal columns to avoid schema errors
                 const { data: household, error: hError } = await supabase
                     .from('households')
                     .insert({
-                        name: homeName || (userName + "'s Home"),
-                        token_name: 'Puntos',
-                        themeColor: '#00FF88'
+                        name: homeName || (userName || "Mi Hogar"),
                     })
                     .select()
                     .single();
@@ -60,16 +58,13 @@ export const Auth = () => {
                 finalHouseholdId = household.id;
             }
 
-            // 3. Create Profile
+            // 3. Create Profile with minimal columns
             const { error: pError } = await supabase
                 .from('profiles')
-                .upsert({ // Use upsert instead of insert
+                .upsert({
                     id: authData.user.id,
                     household_id: finalHouseholdId,
-                    full_name: userName,
-                    avatar_url: '',
-                    color_hex: '#00FF88',
-                    theme: 'cyber'
+                    full_name: userName || 'Nuevo Miembro',
                 });
 
             if (pError) throw pError;
@@ -260,22 +255,21 @@ export const Auth = () => {
                                 {pendingInvite ? 'Unirse al Hogar' : 'Nuevo Hogar'}
                             </h2>
 
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Email</label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                                        <input
-                                            required type="email"
-                                            value={email} onChange={e => setEmail(e.target.value)}
-                                            className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
-                                            placeholder="correo@ejemplo.com"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Password</label>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Email</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
+                                            <input
+                                                required type="email"
+                                                value={email} onChange={e => setEmail(e.target.value)}
+                                                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 pl-12 focus:outline-none focus:border-primary transition-all font-medium"
+                                                placeholder="correo@ejemplo.com"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Contraseña</label>
                                         <div className="relative">
                                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
                                             <input
@@ -286,28 +280,30 @@ export const Auth = () => {
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
-                                        <input
-                                            required
-                                            value={userName} onChange={e => setUserName(e.target.value)}
-                                            className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                                            placeholder="Miguel"
-                                        />
-                                    </div>
+                                    
+                                    {!pendingInvite && (
+                                        <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
+                                                <input
+                                                    required
+                                                    value={userName} onChange={e => setUserName(e.target.value)}
+                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
+                                                    placeholder="Miguel"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Nombre del Hogar</label>
+                                                <input
+                                                    required
+                                                    value={homeName} onChange={e => setHomeName(e.target.value)}
+                                                    className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
+                                                    placeholder="Ej: Familia García"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                {!pendingInvite && (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Nombre del Hogar</label>
-                                        <input
-                                            required
-                                            value={homeName} onChange={e => setHomeName(e.target.value)}
-                                            className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                                            placeholder="Ej: Familia García"
-                                        />
-                                    </div>
-                                )}
-                            </div>
 
                             <button disabled={loading} className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
                                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {pendingInvite ? 'Unirme al Hogar' : 'Crear Hogar'}</>}

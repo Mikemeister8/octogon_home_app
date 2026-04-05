@@ -133,9 +133,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const mappedUser: User = {
                 id: profile.id,
                 email: '',
-                full_name: profile.full_name,
-                avatar_url: profile.avatar_url || '',
-                color_hex: profile.color_hex || '#00FF88',
+                full_name: profile.full_name || profile.fullName || 'Nuevo Miembro',
+                avatar_url: profile.avatar_url || profile.avatarUrl || '',
+                color_hex: profile.color_hex || profile.colorHex || '#00FF88',
                 theme: (profile.theme as 'cyber' | 'light' | 'octogon') || 'cyber',
                 household_id: profile.household_id
             };
@@ -152,7 +152,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     supabase.from('shopping_items').select('*').eq('household_id', profile.household_id)
                 ]);
 
-                if (hRes.data) setHomeSettings({ ...hRes.data, themeColor: hRes.data.themeColor || '#00FF88' });
+                if (hRes.data) {
+                    setHomeSettings({ 
+                        ...hRes.data, 
+                        themeColor: hRes.data.theme_color || hRes.data.themeColor || '#00FF88',
+                        token_name: hRes.data.token_name || hRes.data.tokenName || 'Puntos',
+                        householdInvitationId: hRes.data.household_invitation_id || hRes.data.householdInvitationId
+                    });
+                }
                 if (usersRes.data) setUsers(usersRes.data.map((u) => ({
                     id: u.id,
                     email: '',
@@ -212,10 +219,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (!householdId) {
-                    // No invite found or no invite used - create a brand new household
+                    // 2. Create Household with minimal columns
                     const { data: household, error: hError } = await supabase
                         .from('households')
-                        .insert({ name: name + "'s Home", token_name: 'Puntos', themeColor: '#00FF88' })
+                        .insert({ name: name + "'s Home" })
                         .select().single();
                     if (hError) throw new Error("Error al crear el hogar: " + hError.message);
                     if (!household) throw new Error("No se pudo crear el hogar.");
@@ -223,8 +230,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 const { error: profileError } = await supabase.from('profiles').upsert({
-                    id: userId, household_id: householdId, full_name: name,
-                    avatar_url: '', color_hex: '#00FF88', theme: 'cyber'
+                    id: userId, 
+                    household_id: householdId, 
+                    full_name: name || 'Nuevo Miembro'
                 });
 
                 if (profileError) throw new Error("Error al crear el perfil: " + profileError.message);
