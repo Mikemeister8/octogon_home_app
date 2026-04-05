@@ -50,6 +50,7 @@ interface AppState {
     loading: boolean;
     needsProfileSetup: string | null;
     setupProfile: (userId: string, name: string) => Promise<void>;
+    createHousehold: (userId: string, name: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppState | null>(null);
@@ -142,18 +143,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
 
-                // No invitation found? Create a default household siliently
-                const { data: household } = await supabase.from('households').insert({ name: 'Mi Hogar' }).select().single();
-                if (household) {
-                    await supabase.from('profiles').upsert({
-                        id: userId,
-                        household_id: household.id,
-                        full_name: 'Nuevo Miembro'
-                    });
-                    return fetchUserData(userId);
-                }
-
-                // Fallback for safety
+                // No invitation found?
+                // DO NOT create a household automatically. This was causing duplicates.
+                // Instead, try to see if they HAVE a household after all (refetch) or show setup.
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     setNeedsProfileSetup(session.user.id);
@@ -232,49 +224,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         needsProfileSetup,
         setupProfile: async (userId, name) => {
             try {
-                // Try to get the pending invite from sessionStorage to join the right household
                 const pendingInvite = sessionStorage.getItem('pendingInvite');
-                let householdId: string | null = null;
+                if (!pendingInvite) throw new Error("No se encontró ninguna invitación pendiente.");
 
-                if (pendingInvite) {
-                    const { data: inviteHome, error: inviteError } = await supabase
-                        .from('households')
-                        .select('id')
-                        .eq('householdInvitationId', pendingInvite)
-                        .single();
-                    
-                    if (inviteHome) {
-                        householdId = inviteHome.id;
-                        sessionStorage.removeItem('pendingInvite');
-                    } else if (inviteError && inviteError.code !== 'PGRST116') {
-                        // Throw if it's a real error (not just 'no rows found')
-                        throw new Error("No se pudo encontrar el hogar de la invitación: " + inviteError.message);
-                    }
-                }
+                const { data: allHomes } = await supabase.from('households').select('*');
+                const inviteHome = (allHomes || []).find(h => 
+                    h.household_invitation_id === pendingInvite || 
+                    h.householdInvitationId === pendingInvite
+                );
 
-                if (!householdId) {
-                    // 2. Create Household with minimal columns
-                    const { data: household, error: hError } = await supabase
-                        .from('households')
-                        .insert({ name: name + "'s Home" })
-                        .select().single();
-                    if (hError) throw new Error("Error al crear el hogar: " + hError.message);
-                    if (!household) throw new Error("No se pudo crear el hogar.");
-                    householdId = household.id;
-                }
+                if (!inviteHome) throw new Error("La invitación ya no es válida o el hogar no existe.");
 
                 const { error: profileError } = await supabase.from('profiles').upsert({
                     id: userId, 
-                    household_id: householdId, 
+                    household_id: inviteHome.id, 
                     full_name: name || 'Nuevo Miembro'
                 });
 
-                if (profileError) throw new Error("Error al crear el perfil: " + profileError.message);
+                if (profileError) throw profileError;
 
+                sessionStorage.removeItem('pendingInvite');
                 setNeedsProfileSetup(null);
                 await fetchUserData(userId);
             } catch (err: any) {
                 console.error("Setup Profile Error:", err);
+                throw err;
+            }
+        },
+        createHousehold: async (userId, name) => {
+            try {
+                const { data: household, error: hError } = await supabase
+                    .from('households')
+                    .insert({ name: name || "Mi Hogar" })
+                    .select().single();
+                
+                if (hError) throw hError;
+
+                const { error: profileError } = await supabase.from('profiles').upsert({
+                    id: userId, 
+                    household_id: household.id, 
+                    full_name: name || 'Jefe de Hogar'
+                });
+
+                if (profileError) throw profileError;
+
+                setNeedsProfileSetup(null);
+                await fetchUserData(userId);
+            } catch (err: any) {
+                console.error("Create Household Error:", err);
                 throw err;
             }
         },
