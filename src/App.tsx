@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils, UserPlus } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -12,7 +12,7 @@ import { JoinHousehold } from './pages/JoinHousehold';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -140,8 +140,11 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, loading } = useAppContext();
+  const { currentUser, loading, needsProfileSetup, setupProfile } = useAppContext();
   const location = useLocation();
+  const [setupName, setSetupName] = useState('');
+  const [setupHome, setSetupHome] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -163,6 +166,47 @@ const AppContent = () => {
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
           <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
           <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">OCTOGON HOME APP v2.0.5</p>
+        </div>
+      </div>
+    );
+  }
+
+  // User authenticated in Supabase but profile not created - show setup screen
+  if (needsProfileSetup) {
+    const handleSetup = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!setupName.trim()) return;
+      setSetupLoading(true);
+      await setupProfile(needsProfileSetup, setupName, setupHome || 'Mi Hogar');
+      setSetupLoading(false);
+    };
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center">
+              <UserPlus className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="text-2xl font-black text-foreground">¡Completa tu Perfil!</h1>
+            <p className="text-text-dim text-sm">Tu cuenta existe pero tu perfil no se creó correctamente. Complétalo ahora para acceder.</p>
+          </div>
+          <form onSubmit={handleSetup} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Tu Nombre</label>
+              <input required value={setupName} onChange={e => setSetupName(e.target.value)}
+                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary font-bold"
+                placeholder="Ej: Miguel" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Nombre del Hogar</label>
+              <input value={setupHome} onChange={e => setSetupHome(e.target.value)}
+                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary font-bold"
+                placeholder="Ej: Familia García" />
+            </div>
+            <button disabled={setupLoading || !setupName.trim()} className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+              {setupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar al Hogar'}
+            </button>
+          </form>
         </div>
       </div>
     );

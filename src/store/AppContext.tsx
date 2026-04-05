@@ -48,6 +48,8 @@ interface AppState {
     resetAllData: () => Promise<void>;
     logout: () => Promise<void>;
     loading: boolean;
+    needsProfileSetup: string | null;
+    setupProfile: (userId: string, name: string, householdName: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppState | null>(null);
@@ -62,6 +64,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('octo_cache_shops') || '[]'));
     const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenu[]>([]);
     const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>(() => JSON.parse(localStorage.getItem('octo_cache_concepts') || '[]'));
+    const [needsProfileSetup, setNeedsProfileSetup] = useState<string | null>(null);
     // If we have cached user and settings, we can bypass the initial loading screen instantly!
     const [loading, setLoading] = useState(!(localStorage.getItem('octo_cache_user') && localStorage.getItem('octo_cache_settings')));
 
@@ -77,9 +80,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Initial session load
     useEffect(() => {
+        let isFetching = false;
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
+                isFetching = true;
                 await fetchUserData(session.user.id);
             } else {
                 setLoading(false);
@@ -87,12 +92,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         checkSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            // Skip if checkSession already handled it
+            if (isFetching && event === 'INITIAL_SESSION') return;
             if (session?.user) {
                 await fetchUserData(session.user.id);
             } else {
                 setCurrentUser(null);
                 setHomeSettings(null);
+                setNeedsProfileSetup(null);
                 setLoading(false);
             }
         });
@@ -111,7 +119,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 .single();
 
             if (pError || !profile) {
-                setCurrentUser(null);
+                // Profile doesn't exist yet - show setup screen instead of redirect loop
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    setNeedsProfileSetup(session.user.id);
+                } else {
+                    setCurrentUser(null);
+                }
                 setLoading(false);
                 return;
             }
@@ -174,6 +188,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         users,
         loading,
+        needsProfileSetup,
+        setupProfile: async (userId, name, householdName) => {
+            // Create household then profile for users whose profile INSERT failed at registration
+            const { data: household } = await supabase
+                .from('households')
+                .insert({ name: householdName || 'Mi Hogar', token_name: 'Puntos', logo: 'Home', themeColor: '#00FF88' })
+                .select().single();
+            if (!household) return;
+            await supabase.from('profiles').insert({
+                id: userId, household_id: household.id, full_name: name,
+                avatar_url: '', color_hex: '#00FF88', theme: 'cyber'
+            });
+            setNeedsProfileSetup(null);
+            await fetchUserData(userId);
+        },
         shoppingConcepts,
 
         tasks,
