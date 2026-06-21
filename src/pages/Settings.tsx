@@ -60,7 +60,7 @@ export const Settings = () => {
         setTimeout(() => setSavedSection(null), 2000);
     };
 
-    if (loading || !homeSettings || !currentUser) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
+    if (!homeSettings || !currentUser) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const handleSaveEconomy = async () => {
         setIsSaving(true);

@@ -12,7 +12,7 @@ export const Shopping = () => {
     const [quantity, setQuantity] = useState(1);
     const [suggestions, setSuggestions] = useState<ShoppingConcept[]>([]);
 
-    if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
+    if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const handleInputChange = (e: string) => {
         setNewItem(e);

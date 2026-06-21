@@ -10,7 +10,7 @@ export const Reminders = () => {
     const [time, setTime] = useState('');
     const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
 
-    if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
+    if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();

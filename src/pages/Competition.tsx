@@ -9,7 +9,7 @@ export const Competition = () => {
     const { users, tasks, completions, tokenName, loading } = useAppContext();
     const [view, setView] = useState<RankingView>('current');
 
-    if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
+    if (!currentUser || !homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const today = new Date();
     const currentMonth = today.getMonth();

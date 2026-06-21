@@ -9,7 +9,7 @@ export const Dashboards = () => {
     const { tasks, completions, users, homeSettings, loading } = useAppContext();
     const [filter, setFilter] = useState<FilterType>('month');
 
-    if (loading || !homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
+    if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const now = new Date();
     const getFilteredCompletions = () => {

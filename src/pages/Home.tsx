@@ -33,7 +33,7 @@ const PodioMini = ({ top1, top2 }: { top1?: { user: { color_hex: string, full_na
 export const Home = () => {
     const { users, tasks, completions, currentUser, reminders, homeSettings, loading, tokenName } = useAppContext();
 
-    if (loading || !homeSettings || !currentUser) {
+    if (!homeSettings || !currentUser) {
         return (
             <div className="min-h-[80vh] flex items-center justify-center">
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
