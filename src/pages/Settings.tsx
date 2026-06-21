@@ -12,8 +12,8 @@ export const Settings = () => {
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
-        generateInviteId, resetAllData, logout, loading,
-        joinSpaceByInviteLink
+        generateInviteCode, resetAllData, logout, loading,
+        joinHouseholdByCode, households, activeHouseholdId, switchHousehold
     } = useAppContext();
 
     const [inviteCode, setInviteCode] = useState('');
@@ -38,8 +38,7 @@ export const Settings = () => {
         if (homeSettings) {
             setHomeName(homeSettings.name || '');
             setHomeLogo(homeSettings.logo || 'Home');
-            setHomeColor(homeSettings.themeColor || homeSettings.theme_color || '#00FF88');
-            setLocalToken(homeSettings.token_name || homeSettings.tokenName || 'Puntos');
+            setLocalToken(homeSettings.token_name || 'Puntos');
         }
         if (currentUser) {
             setUserName(currentUser.full_name);
@@ -294,7 +293,7 @@ export const Settings = () => {
                                 setJoinError(null);
                                 setJoinSuccess(false);
                                 try {
-                                    await joinSpaceByInviteLink(inviteCode.trim());
+                                    await joinHouseholdByCode(inviteCode.trim());
                                     setJoinSuccess(true);
                                     setInviteCode('');
                                 } catch (err: any) {
@@ -309,6 +308,36 @@ export const Settings = () => {
                             {joinLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Unirse ahora'}
                         </button>
                     </div>
+
+                    {/* Lista de Hogares actuales */}
+                    {households && households.length > 0 && (
+                        <div className="pt-6 border-t border-foreground/10 space-y-3">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-dim">Mis Hogares</h3>
+                            <div className="space-y-2">
+                                {households.map(h => (
+                                    <div key={h.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${activeHouseholdId === h.id ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-foreground/10 hover:border-foreground/30'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-panel shadow-sm">
+                                                <Home className="w-4 h-4" style={{ color: h.themeColor || '#00FF88' }} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-foreground">{h.name}</p>
+                                                {activeHouseholdId === h.id && <span className="text-[9px] font-black uppercase tracking-widest text-primary">Hogar Activo</span>}
+                                            </div>
+                                        </div>
+                                        {activeHouseholdId !== h.id && (
+                                            <button 
+                                                onClick={() => switchHousehold(h.id)}
+                                                className="px-4 py-2 bg-foreground/10 hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-colors"
+                                            >
+                                                Cambiar
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -351,11 +380,11 @@ export const Settings = () => {
                         Envía el enlace directo para que entren al registrarse, o dales el código si ya tienen cuenta.
                     </p>
 
-                    {!homeSettings.invitation_id && !homeSettings.householdInvitationId && !homeSettings.household_invitation_id ? (
+                    {!homeSettings.invitation_id && !homeSettings.householdInvitationId ? (
                         <button 
                             onClick={async () => {
                                 setIsSaving(true);
-                                await generateInviteId();
+                                await generateInviteCode();
                                 setIsSaving(false);
                             }} 
                             disabled={isSaving}
@@ -370,11 +399,11 @@ export const Settings = () => {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Enlace de Unión Directa</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 truncate text-[11px] font-mono text-accent">
-                                        {window.location.host}/join/{homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                        {window.location.host}/join/{homeSettings.invitation_id || homeSettings.householdInvitationId}
                                     </div>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}`);
+                                            navigator.clipboard.writeText(`${window.location.origin}/join/${homeSettings.invitation_id || homeSettings.householdInvitationId}`);
                                             alert('¡Enlace de unión copiado!');
                                         }}
                                         className="shrink-0 p-3 bg-accent text-white rounded-xl hover:bg-accent/90 transition-all active:scale-90"
@@ -389,11 +418,11 @@ export const Settings = () => {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-1">Código de Hogar (Para Unirse Manualmente)</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-foreground/5 border border-foreground/10 rounded-xl p-3 text-center text-lg font-black tracking-[0.3em] text-foreground uppercase">
-                                        {homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id}
+                                        {homeSettings.invitation_id || homeSettings.householdInvitationId}
                                     </div>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(homeSettings.invitation_id || homeSettings.householdInvitationId || homeSettings.household_invitation_id || '');
+                                            navigator.clipboard.writeText(homeSettings.invitation_id || homeSettings.householdInvitationId || '');
                                             alert('¡Código de hogar copiado!');
                                         }}
                                         className="shrink-0 p-3 bg-foreground text-panel rounded-xl hover:bg-foreground/80 transition-all active:scale-90"

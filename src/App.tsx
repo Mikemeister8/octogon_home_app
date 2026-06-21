@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils, UserPlus, Sparkles } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -12,7 +12,7 @@ import { JoinHousehold } from './pages/JoinHousehold';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -23,7 +23,7 @@ const ScrollToTop = () => {
 };
 
 const Sidebar = () => {
-  const { currentUser, homeSettings, logout } = useAppContext();
+  const { currentUser, homeSettings, logout, households, activeHouseholdId, switchHousehold } = useAppContext();
   const location = useLocation();
 
   if (!currentUser) return null;
@@ -48,9 +48,24 @@ const Sidebar = () => {
         <div className="p-4 bg-panel rounded-[2rem] shadow-2xl border border-foreground/10 group-hover:rotate-12 transition-transform relative z-10">
           <HomeIconComponent className="w-10 h-10" style={{ color: homeSettings?.themeColor || '#00FF88' }} />
         </div>
-        <div className="text-center relative z-10 space-y-1">
-          <h2 className="text-2xl font-black tracking-tight" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
-          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase">OCTOGON HOME APP • v2.0.5</span>
+        <div className="text-center relative z-10 w-full px-4 space-y-2">
+          {households && households.length > 1 ? (
+            <div className="relative">
+              <select
+                value={activeHouseholdId || ''}
+                onChange={(e) => switchHousehold(e.target.value)}
+                className="w-full bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-foreground text-lg font-black tracking-tight text-center appearance-none rounded-2xl py-3 outline-none cursor-pointer transition-colors truncate px-4"
+                style={{ color: homeSettings?.themeColor || '#00FF88' }}
+              >
+                {households.map(h => (
+                  <option key={h.id} value={h.id} className="bg-panel text-foreground">{h.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <h2 className="text-2xl font-black tracking-tight truncate" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
+          )}
+          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase block">OCTOGON HOME APP • v2.0.5</span>
         </div>
       </div>
 
@@ -140,11 +155,8 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, loading, needsProfileSetup, setupProfile, createHousehold, logout } = useAppContext();
+  const { currentUser, loading } = useAppContext();
   const location = useLocation();
-  const [setupName, setSetupName] = useState('');
-  const [setupLoading, setSetupLoading] = useState(false);
-  const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -171,72 +183,7 @@ const AppContent = () => {
     );
   }
 
-  if (needsProfileSetup) {
-    const pendingInvite = localStorage.getItem('pendingInvite');
-    console.log("USUARIO ACTUAL (Necesita Setup):", needsProfileSetup);
-    console.log("PENDING INVITE en UI Setup:", pendingInvite);
-    
-    const handleSetup = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!setupName.trim()) return;
-      setSetupLoading(true);
-      setSetupError(null);
-      try {
-        if (pendingInvite) {
-          await setupProfile(needsProfileSetup, setupName);
-        } else {
-          await createHousehold(needsProfileSetup, setupName);
-        }
-      } catch (err: any) {
-        setSetupError(err.message || 'Error en la configuración.');
-        setSetupLoading(false);
-      }
-    };
 
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-panel border border-foreground/10 rounded-3xl p-8 shadow-2xl space-y-6">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center">
-              <UserPlus className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-2xl font-black text-foreground">
-              {pendingInvite ? '¡Te han invitado!' : 'Crea tu Hogar'}
-            </h1>
-            {setupError && (
-              <p className="p-3 bg-red-500/10 text-red-500 text-xs font-bold rounded-xl border border-red-500/20">
-                {setupError}
-              </p>
-            )}
-            <p className="text-text-dim text-sm text-balance">
-              {pendingInvite 
-                ? 'Solo falta tu nombre para unirte al hogar.' 
-                : 'Para empezar, necesitamos saber cómo te llamas.'}
-            </p>
-          </div>
-
-          <form onSubmit={handleSetup} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim ml-1">Tu Nombre</label>
-              <input
-                required autoFocus
-                value={setupName} onChange={e => setSetupName(e.target.value)}
-                className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-4 focus:outline-none focus:border-primary transition-all font-medium"
-                placeholder="Ej: Miguel"
-              />
-            </div>
-            <button disabled={setupLoading} className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
-              {setupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> Entrar</>}
-            </button>
-          </form>
-
-          <button onClick={logout} className="w-full text-xs font-bold text-text-dim hover:text-red-500 transition-colors uppercase tracking-widest">
-            Cancelar y Salir
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!currentUser && !location.pathname.startsWith('/join')) {
     return (

@@ -17,7 +17,7 @@ export interface TaskCompletion {
     task_id: string;
     user_id: string;
     points_earned: number;
-    completed_at: string; // ISO string 
+    completed_at: string;
 }
 
 export interface User {
@@ -27,28 +27,33 @@ export interface User {
     avatar_url: string;
     color_hex: string;
     theme: AppTheme;
-    household_id?: string;
+}
+
+export interface Membership {
+    id: string;
+    user_id: string;
+    household_id: string;
+    role: 'owner' | 'member';
+    joined_at: string;
 }
 
 export interface HomeSettings {
     id: string;
     name: string;
     logo?: string;
-    themeColor?: string;
     theme_color?: string;
-    invitation_id?: string;
-    household_invitation_id?: string;
-    householdInvitationId?: string;
+    themeColor?: string;
     token_name?: string;
-    tokenName?: string;
+    invitation_id?: string;
+    householdInvitationId?: string;
 }
 
 export interface Reminder {
     id: string;
     household_id: string;
     title: string;
-    due_date: string; // ISO Date String
-    assigned_to: string[]; // user IDs
+    due_date: string;
+    assigned_to: string[];
     description?: string;
     is_completed?: boolean;
 }
@@ -59,8 +64,8 @@ export interface ShoppingItem {
     name: string;
     quantity: number;
     is_purchased: boolean;
-    created_at: string; // ISO string
-    created_by?: string | null; // userId
+    created_at: string;
+    created_by?: string | null;
 }
 
 export interface MealIngredient {
@@ -90,4 +95,12 @@ export interface ShoppingConcept {
     id: string;
     name: string;
     category?: string;
+}
+
+// Pending action stored in localStorage during signup
+export interface PendingAction {
+    type: 'create' | 'join';
+    userName: string;
+    householdName?: string; // for type='create'
+    code?: string;          // for type='join'
 }
