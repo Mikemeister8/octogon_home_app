@@ -350,11 +350,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         let handled = false;
 
         const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                handled = true;
-                await fetchUserData(session.user.id);
-            } else {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+                if (session?.user) {
+                    handled = true;
+                    await fetchUserData(session.user.id);
+                } else {
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error('[AUTH] getSession error:', err);
                 setLoading(false);
             }
         };
@@ -362,21 +368,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (handled && event === 'INITIAL_SESSION') return;
-            if (session?.user) {
-                handled = true;
-                await fetchUserData(session.user.id);
-            } else if (event === 'SIGNED_OUT') {
+            
+            if (event === 'SIGNED_OUT') {
                 setCurrentUser(null);
                 setHomeSettings(null);
                 setHouseholds([]);
                 setActiveHouseholdId(null);
                 setNeedsProfileSetup(false);
                 setLoading(false);
+                handled = false;
+            } else if (session?.user) {
+                // Only fetch if we are signing in OR if we don't have the user yet
+                if (event === 'SIGNED_IN' || !handled || !currentUser) {
+                    handled = true;
+                    await fetchUserData(session.user.id);
+                }
             }
         });
 
         return () => { listener.subscription.unsubscribe(); };
-    }, []);
+    }, [currentUser]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTEXT VALUE
