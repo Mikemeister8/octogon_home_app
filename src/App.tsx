@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Loader2, Utensils } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -155,7 +155,7 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, loading } = useAppContext();
+  const { currentUser } = useAppContext();
   const location = useLocation();
 
   useEffect(() => {
@@ -164,26 +164,6 @@ const AppContent = () => {
       document.documentElement.classList.add(`theme-${currentUser.theme || 'cyber'}`);
     }
   }, [currentUser]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 space-y-8">
-        <div className="relative">
-          <div className="absolute inset-0 bg-primary/10 rounded-full scale-150 animate-pulse" />
-          <div className="w-24 h-24 bg-panel border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center relative z-10 shadow-2xl">
-            <img src="/logo.png" alt="Octogon" className="w-12 h-12 object-contain" />
-          </div>
-        </div>
-        <div className="text-center space-y-3">
-          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
-          <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">Cargando Centro</h2>
-          <p className="text-text-dim text-xs font-black uppercase tracking-[0.3em]">OCTOGON HOME APP v2.0.5</p>
-        </div>
-      </div>
-    );
-  }
-
-
 
   if (!currentUser && !location.pathname.startsWith('/join')) {
     return (
