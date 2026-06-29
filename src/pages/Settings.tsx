@@ -12,7 +12,7 @@ export const Settings = () => {
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
-        generateInviteCode, resetAllData, logout, loading,
+        generateInviteCode, resetAllData, logout,
         joinHouseholdByCode, households, activeHouseholdId, switchHousehold
     } = useAppContext();
 

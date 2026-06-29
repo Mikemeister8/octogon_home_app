@@ -31,7 +31,7 @@ const PodioMini = ({ top1, top2 }: { top1?: { user: { color_hex: string, full_na
 );
 
 export const Home = () => {
-    const { users, tasks, completions, currentUser, reminders, homeSettings, loading, tokenName } = useAppContext();
+    const { users, tasks, completions, currentUser, reminders, homeSettings, tokenName } = useAppContext();
 
     if (!homeSettings || !currentUser) {
         return (

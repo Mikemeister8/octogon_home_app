@@ -20,7 +20,7 @@ export interface MenuData {
 }
 
 export const Meals = () => {
-    const { loading, currentUser, shoppingConcepts, addShoppingItem, addShoppingConcept } = useAppContext();
+    const { shoppingConcepts, addShoppingConcept, addShoppingItem, homeSettings, currentUser } = useAppContext();
 
     // LocalStorage States
     const [menus, setMenus] = useState<MenuData[]>(() => JSON.parse(localStorage.getItem('octo_menus') || '[]'));

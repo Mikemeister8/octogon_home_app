@@ -3,7 +3,7 @@ import { useAppContext } from '../store/AppContext';
 import { CalendarDays, Plus, Trash2, Users, Clock, Loader2 } from 'lucide-react';
 
 export const Reminders = () => {
-    const { reminders, users, addReminder, deleteReminder, loading } = useAppContext();
+    const { users, reminders, addReminder, deleteReminder, homeSettings } = useAppContext();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');

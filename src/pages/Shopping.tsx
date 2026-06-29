@@ -6,7 +6,7 @@ import type { ShoppingConcept, ShoppingItem } from '../types';
 export const Shopping = () => {
     const {
         shoppingItems, addShoppingItem, updateShoppingItem, deleteShoppingItem,
-        shoppingConcepts, addShoppingConcept, currentUser, loading
+        shoppingConcepts, addShoppingConcept, currentUser, homeSettings
     } = useAppContext();
     const [newItem, setNewItem] = useState('');
     const [quantity, setQuantity] = useState(1);

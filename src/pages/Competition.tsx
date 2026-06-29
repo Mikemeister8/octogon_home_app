@@ -6,7 +6,7 @@ import { Trophy, Award, Flame, Medal, Star, Loader2, Calendar, History, Crown } 
 type RankingView = 'current' | 'previous' | 'champions' | 'alltime';
 
 export const Competition = () => {
-    const { users, tasks, completions, tokenName, loading } = useAppContext();
+    const { users, tasks, completions, tokenName, currentUser, homeSettings } = useAppContext();
     const [view, setView] = useState<RankingView>('current');
 
     if (!currentUser || !homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;

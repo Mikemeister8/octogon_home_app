@@ -3,7 +3,7 @@ import { useAppContext } from '../store/AppContext';
 import { ListTodo, Plus, Trash2, CheckCircle2, Trophy, Loader2, Sparkles, X, Clock, Edit3, Save, Undo2, GripVertical } from 'lucide-react';
 
 export const Tasks = () => {
-    const { tasks, completions, addTask, updateTask, deleteTask, addCompletion, removeCompletion, currentUser, loading, tokenName } = useAppContext();
+    const { tasks, completions, addTask, updateTask, deleteTask, addCompletion, removeCompletion, currentUser, homeSettings, tokenName } = useAppContext();
     const [title, setTitle] = useState('');
     const [points, setPoints] = useState(10);
     const [allowMultiple, setAllowMultiple] = useState(true);
