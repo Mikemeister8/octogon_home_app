@@ -47,14 +47,12 @@ export const Auth = () => {
         setCodeStatus('checking');
         try {
             const { data } = await supabase
-                .from('invitations')
-                .select('household_id, households(name)')
-                .eq('code', normalized)
-                .maybeSingle();
+                .rpc('check_invite_code', { codigo_ingresado: normalized })
+                .maybeSingle() as { data: any, error: any };
 
             if (data) {
                 setCodeStatus('valid');
-                setJoinHouseholdName((data.households as any)?.name || 'Hogar');
+                setJoinHouseholdName(data.household_name || 'Hogar');
             } else {
                 setCodeStatus('invalid');
                 setJoinHouseholdName('');

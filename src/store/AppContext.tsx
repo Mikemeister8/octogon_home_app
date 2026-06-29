@@ -206,7 +206,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.log('[JOIN] Looking for invite code:', normalized);
 
         const { data: invite, error: invErr } = await supabase
-            .from('invitations').select('*').eq('code', normalized).maybeSingle();
+            .rpc('check_invite_code', { codigo_ingresado: normalized })
+            .maybeSingle() as { data: any, error: any };
 
         console.log('[JOIN] Invite result:', invite, 'Error:', invErr);
 
@@ -425,15 +426,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         validateInviteCode: async (code: string) => {
             const normalized = code.trim().toUpperCase();
             const { data } = await supabase
-                .from('invitations')
-                .select('household_id, households(name)')
-                .eq('code', normalized)
-                .maybeSingle();
+                .rpc('check_invite_code', { codigo_ingresado: normalized })
+                .maybeSingle() as { data: any, error: any };
 
             if (!data) return null;
             return {
                 householdId: data.household_id,
-                householdName: (data.households as any)?.name || 'Hogar',
+                householdName: data.household_name || 'Hogar',
             };
         },
 
