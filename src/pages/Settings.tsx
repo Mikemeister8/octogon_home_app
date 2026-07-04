@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle, Copy } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle, Copy, Users } from 'lucide-react';
 import { ICONS } from '../utils/icons';
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#00FF88', '#FF5D00'];
@@ -13,7 +13,8 @@ export const Settings = () => {
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
         generateInviteCode, resetAllData, logout,
-        joinHouseholdByCode, households, activeHouseholdId, switchHousehold
+        joinHouseholdByCode, households, activeHouseholdId, switchHousehold,
+        users
     } = useAppContext();
 
     const [inviteCode, setInviteCode] = useState('');
@@ -437,6 +438,63 @@ export const Settings = () => {
                             </p>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Household Members Section */}
+            <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-10 shadow-2xl space-y-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-primary/10 rounded-3xl">
+                        <Users className="w-8 h-8 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Miembros del Hogar</h2>
+                        <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest">{users.length} {users.length === 1 ? 'miembro' : 'miembros'} en este hogar</p>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    {users.length === 0 && (
+                        <p className="py-8 text-center text-text-dim font-bold italic opacity-40">No se han cargado miembros</p>
+                    )}
+                    {users.map(member => {
+                        const isMe = member.id === currentUser?.id;
+                        return (
+                            <div
+                                key={member.id}
+                                className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                                    isMe
+                                        ? 'bg-primary/5 border-primary/20'
+                                        : 'bg-foreground/5 border-foreground/10'
+                                }`}
+                            >
+                                {/* Avatar */}
+                                <div
+                                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0 shadow-md"
+                                    style={{ backgroundColor: member.color_hex || '#00FF88' }}
+                                >
+                                    {member.full_name.charAt(0).toUpperCase()}
+                                </div>
+
+                                {/* Name */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-black text-foreground truncate">
+                                        {member.full_name}
+                                        {isMe && <span className="ml-2 text-[9px] font-black uppercase tracking-widest text-primary">Tú</span>}
+                                    </p>
+                                </div>
+
+                                {/* Role badge */}
+                                <span className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
+                                    isMe
+                                        ? 'bg-primary/10 text-primary border-primary/20'
+                                        : 'bg-foreground/10 text-text-dim border-foreground/10'
+                                }`}>
+                                    {isMe ? 'Propietario' : 'Miembro'}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
