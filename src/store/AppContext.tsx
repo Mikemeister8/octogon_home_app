@@ -213,9 +213,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (!invite) throw new Error(`Código de invitación "${normalized}" no encontrado.`);
 
+        console.log('[JOIN] Upserting profile for user:', userId);
         // Upsert profile
-        await supabase.from('profiles').upsert({ id: userId, full_name: userName });
+        const { error: pErr } = await supabase.from('profiles').upsert({
+            id: userId, full_name: userName, color_hex: '#00FF88', theme: 'cyber'
+        });
+        if (pErr) throw new Error(`Profile insert error: ${pErr.message}`);
 
+        console.log('[JOIN] Checking for existing membership...');
         // Check if already a member
         const { data: existing } = await supabase
             .from('memberships').select('id')
@@ -225,6 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return invite.household_id;
         }
 
+        console.log('[JOIN] Inserting membership for household:', invite.household_id);
         // Insert membership
         const { data: mData, error: mErr } = await supabase.from('memberships').insert({
             user_id: userId, household_id: invite.household_id, role: 'member'
