@@ -70,6 +70,10 @@ interface AppState {
     needsProfileSetup: boolean;
     setupError: string | null;
     retrySetup: () => Promise<void>;
+    completeSetup: (action:
+        | { type: 'create'; householdName: string; userName: string }
+        | { type: 'join'; code: string; userName: string }
+    ) => Promise<void>;
 
     logout: () => Promise<void>;
     resetAllData: () => Promise<void>;
@@ -426,6 +430,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         retrySetup: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) await fetchUserData(user.id);
+        },
+
+        // Runs when a signed-in user has no household yet (needsProfileSetup)
+        // and needs to create or join one without going through signup again.
+        completeSetup: async (action) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
+
+            if (action.type === 'create') {
+                await createHouseholdInternal(user.id, action.householdName, action.userName);
+            } else {
+                await joinHouseholdByCodeInternal(user.id, action.code, action.userName);
+            }
+            await fetchUserData(user.id);
         },
 
         // ── Invitations ────────────────────────────────────────────────────────
