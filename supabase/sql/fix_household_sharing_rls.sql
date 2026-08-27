@@ -1,228 +1,166 @@
 -- ============================================================================
--- FIX: "El problema de la habitación"
+-- FIX: "El problema de la habitación" — YA APLICADO EN PRODUCCIÓN
 -- ----------------------------------------------------------------------------
--- Síntoma: cuando un usuario se une a un hogar mediante código de invitación,
--- termina en una copia del hogar donde no ve las tareas/compra/recordatorios
--- ni los cambios de los demás miembros, aunque comparten el mismo household_id.
+-- Este archivo documenta el fix real que ya se ejecutó directamente contra
+-- el proyecto de Supabase (lrmqhoygbalfhvtxlmsk) vía el conector MCP, en
+-- varias migraciones. Se deja aquí en control de versiones para que el
+-- historial del repo refleje lo que hay en la base de datos real. Es
+-- idempotente: se puede re-ejecutar sin romper nada.
 --
--- Causa más probable: las políticas de Row Level Security (RLS) actuales
--- filtran por "es tu propia fila" (auth.uid() = user_id / created_by) en vez
--- de "eres miembro del hogar (household_id) al que pertenece la fila". Esto
--- hace que cada usuario solo pueda ver/editar lo que él mismo creó, aunque
--- todos apunten al mismo hogar en la base de datos.
+-- CAUSA RAÍZ CONFIRMADA (no una hipótesis: se verificó con los datos reales
+-- del proyecto):
+--   Las políticas de RLS dependían de auth_household_id(), una función que
+--   devolvía UN SOLO hogar por usuario (`LIMIT 1` sin ORDER BY) leyendo de
+--   `memberships`. Pero memberships tiene UNIQUE(user_id, household_id), NO
+--   UNIQUE(user_id) — el esquema (y el selector de hogar del sidebar) permite
+--   explícitamente que un usuario pertenezca a varios hogares. Cualquier
+--   acceso a un hogar que no fuera el elegido arbitrariamente por ese
+--   `LIMIT 1` quedaba mal evaluado.
 --
--- Este script:
---   1) Elimina TODAS las políticas existentes de las tablas implicadas
---      (sin importar su nombre actual).
---   2) Crea una función helper is_household_member(household_id) que
---      comprueba pertenencia real vía la tabla `memberships`.
---   3) Recrea políticas correctas: "puedes ver/editar una fila si eres
---      miembro del hogar al que pertenece esa fila".
---   4) Reescribe check_invite_code(...) como SECURITY DEFINER para que
---      pueda validar un código de invitación ANTES de que el usuario sea
---      miembro del hogar (incluso antes de iniciar sesión).
---
--- CÓMO APLICARLO:
---   Supabase Dashboard → tu proyecto → SQL Editor → pega este archivo
---   completo → Run. Es seguro re-ejecutarlo (es idempotente).
---
--- Ajusta los nombres de tabla/columna si en tu proyecto difieren de los
--- que usa el código en src/store/AppContext.tsx.
+--   Además, el cliente nunca mostraba ningún error cuando el setup (crear o
+--   unirse a un hogar) fallaba a mitad de camino: needsProfileSetup/
+--   setupError se guardaban en el estado pero ninguna pantalla los leía. El
+--   usuario volvía en silencio a la pantalla de bienvenida y, sin saberlo,
+--   creaba un hogar nuevo. Los datos del proyecto lo confirmaron: 13 hogares
+--   huérfanos bajo la misma cuenta (creados en ráfagas de segundos = reintentos
+--   silenciosos) y una segunda cuenta real con sesión válida pero cero perfil
+--   y cero membresía. Ese bug de UI se corrigió aparte, en el código del
+--   cliente (App.tsx, AppContext.tsx, src/pages/CompleteSetup.tsx).
 -- ============================================================================
 
--- ── Helper: ¿el usuario autenticado es miembro de este hogar? ───────────────
-create or replace function public.is_household_member(p_household_id uuid)
+-- ── Helpers: pertenencia real a un hogar (soporta multi-hogar) ──────────────
+create or replace function public.is_household_member(target_household_id uuid)
 returns boolean
 language sql
-security definer
 stable
+security definer
 set search_path = public
 as $$
   select exists (
-    select 1
-    from public.memberships m
-    where m.household_id = p_household_id
+    select 1 from public.memberships m
+    where m.household_id = target_household_id
       and m.user_id = auth.uid()
   );
 $$;
 
-create or replace function public.is_household_owner(p_household_id uuid)
+create or replace function public.shares_household_with(target_user_id uuid)
 returns boolean
 language sql
-security definer
 stable
+security definer
 set search_path = public
 as $$
   select exists (
     select 1
-    from public.memberships m
-    where m.household_id = p_household_id
-      and m.user_id = auth.uid()
-      and m.role = 'owner'
+    from public.memberships mine
+    join public.memberships theirs on theirs.household_id = mine.household_id
+    where mine.user_id = auth.uid()
+      and theirs.user_id = target_user_id
   );
 $$;
 
+-- Solo el rol `authenticated` necesita poder invocarlas: se usan dentro de
+-- políticas RLS, evaluadas como el rol que hace la consulta (no como el
+-- "definer" de la función — SECURITY DEFINER solo cambia los permisos con
+-- los que corre el CUERPO de la función sobre otras tablas, no el permiso de
+-- EJECUTARLA). No se exponen a `anon`.
 grant execute on function public.is_household_member(uuid) to authenticated;
-grant execute on function public.is_household_owner(uuid) to authenticated;
+grant execute on function public.shares_household_with(uuid) to authenticated;
 
--- ── Utilidad: elimina todas las políticas existentes de una tabla ───────────
-do $$
-declare
-  tbl text;
-  pol record;
-begin
-  foreach tbl in array array[
-    'households', 'memberships', 'profiles', 'invitations',
-    'tasks', 'task_completions', 'reminders',
-    'shopping_items', 'shopping_database'
-  ]
-  loop
-    for pol in
-      select policyname from pg_policies
-      where schemaname = 'public' and tablename = tbl
-    loop
-      execute format('drop policy %I on public.%I', pol.policyname, tbl);
-    end loop;
-  end loop;
-end $$;
+-- ── households ────────────────────────────────────────────────────────────
+drop policy if exists h_select on public.households;
+drop policy if exists h_update on public.households;
 
--- Asegura RLS activo (no lo desactiva si ya lo estaba)
-alter table public.households enable row level security;
-alter table public.memberships enable row level security;
-alter table public.profiles enable row level security;
-alter table public.invitations enable row level security;
-alter table public.tasks enable row level security;
-alter table public.task_completions enable row level security;
-alter table public.reminders enable row level security;
-alter table public.shopping_items enable row level security;
-alter table public.shopping_database enable row level security;
-
--- ============================================================================
--- households
--- ============================================================================
-create policy "households_select_members"
-  on public.households for select
+create policy h_select on public.households for select
   using (public.is_household_member(id));
 
-create policy "households_insert_authenticated"
-  on public.households for insert
-  with check (auth.uid() is not null);
+create policy h_update on public.households for update
+  using (public.is_household_member(id));
 
-create policy "households_update_members"
-  on public.households for update
-  using (public.is_household_member(id))
-  with check (public.is_household_member(id));
+-- ── invitations ───────────────────────────────────────────────────────────
+drop policy if exists inv_select_own on public.invitations;
 
-create policy "households_delete_owner"
-  on public.households for delete
-  using (public.is_household_owner(id));
-
--- ============================================================================
--- memberships
--- ============================================================================
--- Ver: cualquier miembro del hogar puede ver la lista de miembros del hogar.
-create policy "memberships_select_household"
-  on public.memberships for select
+create policy inv_select_own on public.invitations for select
   using (public.is_household_member(household_id));
 
--- Insertar: un usuario solo puede crear su PROPIA membresía (no puede meter
--- a otros), y solo si el hogar tiene al menos una invitación emitida (evita
--- que alguien se una a un household_id adivinado sin pasar por un código).
-create policy "memberships_insert_self"
-  on public.memberships for insert
-  with check (
-    user_id = auth.uid()
-    and (
-      role = 'owner'
-      or exists (
-        select 1 from public.invitations i
-        where i.household_id = memberships.household_id
-      )
-    )
-  );
+-- ── memberships ───────────────────────────────────────────────────────────
+drop policy if exists m_select on public.memberships;
 
--- Borrar: puedes salir tú mismo del hogar, o el owner puede expulsar a otros.
-create policy "memberships_delete_self_or_owner"
-  on public.memberships for delete
-  using (
-    user_id = auth.uid()
-    or public.is_household_owner(household_id)
-  );
+create policy m_select on public.memberships for select
+  using (public.is_household_member(household_id));
 
--- ============================================================================
--- profiles
--- ============================================================================
--- Ver: tu propio perfil, o el de cualquiera con quien compartas un hogar.
-create policy "profiles_select_self_or_housemates"
-  on public.profiles for select
+-- ── profiles ──────────────────────────────────────────────────────────────
+drop policy if exists p_select on public.profiles;
+
+create policy p_select on public.profiles for select
   using (
     id = auth.uid()
-    or exists (
-      select 1
-      from public.memberships mine
-      join public.memberships theirs on theirs.household_id = mine.household_id
-      where mine.user_id = auth.uid()
-        and theirs.user_id = profiles.id
-    )
+    or public.shares_household_with(id)
   );
 
-create policy "profiles_insert_self"
-  on public.profiles for insert
-  with check (id = auth.uid());
+-- ── tasks ─────────────────────────────────────────────────────────────────
+drop policy if exists t_select on public.tasks;
+drop policy if exists t_insert on public.tasks;
+drop policy if exists t_update on public.tasks;
+drop policy if exists t_delete on public.tasks;
 
-create policy "profiles_update_self"
-  on public.profiles for update
-  using (id = auth.uid())
-  with check (id = auth.uid());
-
--- ============================================================================
--- invitations
--- ============================================================================
--- La validación de código (antes de unirse) pasa por la función
--- check_invite_code (SECURITY DEFINER, más abajo), que ignora RLS.
--- Estas políticas solo gobiernan la gestión normal de códigos ya siendo
--- miembro (p.ej. verlos/generarlos desde Ajustes).
-create policy "invitations_select_members"
-  on public.invitations for select
+create policy t_select on public.tasks for select
+  using (public.is_household_member(household_id));
+create policy t_insert on public.tasks for insert
+  with check (public.is_household_member(household_id));
+create policy t_update on public.tasks for update
+  using (public.is_household_member(household_id));
+create policy t_delete on public.tasks for delete
   using (public.is_household_member(household_id));
 
-create policy "invitations_insert_members"
-  on public.invitations for insert
-  with check (public.is_household_member(household_id));
+-- ── reminders ─────────────────────────────────────────────────────────────
+drop policy if exists r_select on public.reminders;
+drop policy if exists r_insert on public.reminders;
+drop policy if exists r_update on public.reminders;
+drop policy if exists r_delete on public.reminders;
 
-create policy "invitations_delete_members"
-  on public.invitations for delete
+create policy r_select on public.reminders for select
+  using (public.is_household_member(household_id));
+create policy r_insert on public.reminders for insert
+  with check (public.is_household_member(household_id));
+create policy r_update on public.reminders for update
+  using (public.is_household_member(household_id));
+create policy r_delete on public.reminders for delete
   using (public.is_household_member(household_id));
 
--- ============================================================================
--- tasks / reminders / shopping_items / shopping_database
--- (todas tienen household_id directamente)
--- ============================================================================
-create policy "tasks_all_members"
-  on public.tasks for all
-  using (public.is_household_member(household_id))
-  with check (public.is_household_member(household_id));
+-- ── shopping_items ────────────────────────────────────────────────────────
+drop policy if exists si_select on public.shopping_items;
+drop policy if exists si_insert on public.shopping_items;
+drop policy if exists si_update on public.shopping_items;
+drop policy if exists si_delete on public.shopping_items;
 
-create policy "reminders_all_members"
-  on public.reminders for all
-  using (public.is_household_member(household_id))
+create policy si_select on public.shopping_items for select
+  using (public.is_household_member(household_id));
+create policy si_insert on public.shopping_items for insert
   with check (public.is_household_member(household_id));
+create policy si_update on public.shopping_items for update
+  using (public.is_household_member(household_id));
+create policy si_delete on public.shopping_items for delete
+  using (public.is_household_member(household_id));
 
-create policy "shopping_items_all_members"
-  on public.shopping_items for all
-  using (public.is_household_member(household_id))
+-- ── shopping_database ─────────────────────────────────────────────────────
+drop policy if exists sd_select on public.shopping_database;
+drop policy if exists sd_insert on public.shopping_database;
+drop policy if exists sd_delete on public.shopping_database;
+
+create policy sd_select on public.shopping_database for select
+  using (public.is_household_member(household_id));
+create policy sd_insert on public.shopping_database for insert
   with check (public.is_household_member(household_id));
+create policy sd_delete on public.shopping_database for delete
+  using (public.is_household_member(household_id));
 
-create policy "shopping_database_all_members"
-  on public.shopping_database for all
-  using (public.is_household_member(household_id))
-  with check (public.is_household_member(household_id));
+-- ── task_completions (sin household_id propio: se relaciona vía task_id) ───
+drop policy if exists tc_select on public.task_completions;
+drop policy if exists tc_insert on public.task_completions;
+drop policy if exists tc_delete on public.task_completions;
 
--- ============================================================================
--- task_completions (no tiene household_id propio: se relaciona vía task_id)
--- ============================================================================
-create policy "task_completions_select_household"
-  on public.task_completions for select
+create policy tc_select on public.task_completions for select
   using (
     exists (
       select 1 from public.tasks t
@@ -230,56 +168,54 @@ create policy "task_completions_select_household"
         and public.is_household_member(t.household_id)
     )
   );
-
-create policy "task_completions_insert_household"
-  on public.task_completions for insert
+create policy tc_insert on public.task_completions for insert
   with check (
-    exists (
-      select 1 from public.tasks t
-      where t.id = task_completions.task_id
-        and public.is_household_member(t.household_id)
-    )
+    user_id = auth.uid()
     and exists (
       select 1 from public.tasks t
-      join public.memberships m
-        on m.household_id = t.household_id
-      where t.id = task_completions.task_id
-        and m.user_id = task_completions.user_id
-    )
-  );
-
-create policy "task_completions_delete_household"
-  on public.task_completions for delete
-  using (
-    exists (
-      select 1 from public.tasks t
       where t.id = task_completions.task_id
         and public.is_household_member(t.household_id)
     )
   );
+create policy tc_delete on public.task_completions for delete
+  using (user_id = auth.uid());
 
--- ============================================================================
--- check_invite_code: debe poder ejecutarse ANTES de ser miembro del hogar
--- (incluso antes de iniciar sesión, ver Auth.tsx -> validateCode), así que
--- tiene que ser SECURITY DEFINER para saltarse RLS de forma controlada.
--- ============================================================================
+-- ── check_invite_code: comparación case-insensitive (ya lo era vía el
+-- cliente, esto lo hace robusto también si alguien inserta un código a
+-- mano) y toma el más reciente si hubiera códigos duplicados. ────────────────
 create or replace function public.check_invite_code(codigo_ingresado text)
-returns table (household_id uuid, household_name text)
-language sql
+returns table(household_id uuid, household_name text)
+language plpgsql
 security definer
-stable
-set search_path = public
-as $$
-  select h.id as household_id, h.name as household_name
-  from public.invitations i
-  join public.households h on h.id = i.household_id
-  where upper(i.code) = upper(codigo_ingresado)
-  order by i.created_at desc
-  limit 1;
-$$;
+set search_path to 'public'
+as $function$
+BEGIN
+  RETURN QUERY
+  SELECT i.household_id, h.name
+  FROM invitations i
+  JOIN households h ON h.id = i.household_id
+  WHERE upper(i.code) = upper(codigo_ingresado)
+  ORDER BY i.created_at DESC
+  LIMIT 1;
+END;
+$function$;
 
-grant execute on function public.check_invite_code(text) to anon, authenticated;
+-- ── Tablas que tenían RLS desactivado por completo (cualquiera con la clave
+-- anon podía leer/escribir todas las filas). Ninguna la usa el código del
+-- cliente hoy, así que activar RLS sin políticas (deny-by-default) cierra el
+-- hueco sin romper nada. Si en el futuro se implementan estas funciones
+-- (recetas semanales en BD, historial de competición, ajustes manuales de
+-- puntos), añadir políticas del mismo estilo que las de arriba.
+alter table public.manual_adjustments enable row level security;
+alter table public.meal_weeks enable row level security;
+alter table public.meals enable row level security;
+alter table public.competition_history enable row level security;
 
 -- ============================================================================
--- FIN
+-- Limpieza: la función auth_household_id() (causa raíz) y un helper
+-- duplicado sin usar (is_member_of, de un intento de fix anterior que nunca
+-- se conectó a ninguna política) se eliminaron por completo — nada las
+-- referencia ya.
 -- ============================================================================
+drop function if exists public.auth_household_id();
+drop function if exists public.is_member_of(uuid);
