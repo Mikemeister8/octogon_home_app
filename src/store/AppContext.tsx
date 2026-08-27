@@ -405,6 +405,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // ── Realtime: reflect changes made by other household members ─────────────
+    // Without this, one member's completed task / new shopping item / edited
+    // reminder only appeared for everyone else after a full manual reload —
+    // which looked exactly like each person being in a separate, unsynced
+    // household even though the data was shared correctly underneath.
+    useEffect(() => {
+        if (!activeHouseholdId) return;
+
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+        const refresh = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { loadHouseholdData(activeHouseholdId); }, 400);
+        };
+
+        const channel = supabase
+            .channel(`household-${activeHouseholdId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `household_id=eq.${activeHouseholdId}` }, refresh)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders', filter: `household_id=eq.${activeHouseholdId}` }, refresh)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items', filter: `household_id=eq.${activeHouseholdId}` }, refresh)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_database', filter: `household_id=eq.${activeHouseholdId}` }, refresh)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'memberships', filter: `household_id=eq.${activeHouseholdId}` }, refresh)
+            // task_completions has no household_id column to filter by directly;
+            // refresh() just re-fetches this household's own data either way.
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'task_completions' }, refresh)
+            .subscribe();
+
+        return () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        };
+    }, [activeHouseholdId]);
+
     // ─────────────────────────────────────────────────────────────────────────
     // CONTEXT VALUE
     // ─────────────────────────────────────────────────────────────────────────
