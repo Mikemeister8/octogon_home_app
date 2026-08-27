@@ -496,13 +496,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!homeSettings) return;
             const { data, error } = await supabase.from('tasks').insert({ ...t, household_id: homeSettings.id }).select().single();
             if (data && !error) setTasks(prev => [...prev, data]);
+            else if (error) console.error('[addTask] failed:', error.message);
         },
         updateTask: async (t) => {
-            await supabase.from('tasks').update(t).eq('id', t.id);
+            const { error } = await supabase.from('tasks').update(t).eq('id', t.id);
+            if (error) { console.error('[updateTask] failed:', error.message); return; }
             setTasks(prev => prev.map(x => x.id === t.id ? t : x));
         },
         deleteTask: async (id) => {
-            await supabase.from('tasks').delete().eq('id', id);
+            const { error } = await supabase.from('tasks').delete().eq('id', id);
+            if (error) { console.error('[deleteTask] failed:', error.message); return; }
             setTasks(prev => prev.filter(x => x.id !== id));
         },
 
@@ -511,9 +514,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { data, error } = await supabase.from('task_completions')
                 .insert({ task_id: taskId, user_id: userId, points_earned: points }).select().single();
             if (data && !error) setCompletions(prev => [...prev, data]);
+            else if (error) console.error('[addCompletion] failed:', error.message);
         },
         removeCompletion: async (id) => {
-            await supabase.from('task_completions').delete().eq('id', id);
+            const { error } = await supabase.from('task_completions').delete().eq('id', id);
+            if (error) { console.error('[removeCompletion] failed:', error.message); return; }
             setCompletions(prev => prev.filter(x => x.id !== id));
         },
 
@@ -523,9 +528,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { data, error } = await supabase.from('reminders')
                 .insert({ ...r, household_id: homeSettings.id }).select().single();
             if (data && !error) setReminders(prev => [...prev, data]);
+            else if (error) console.error('[addReminder] failed:', error.message);
         },
         deleteReminder: async (id) => {
-            await supabase.from('reminders').delete().eq('id', id);
+            const { error } = await supabase.from('reminders').delete().eq('id', id);
+            if (error) { console.error('[deleteReminder] failed:', error.message); return; }
             setReminders(prev => prev.filter(x => x.id !== id));
         },
 
@@ -535,13 +542,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { data, error } = await supabase.from('shopping_items')
                 .insert({ name, created_by: userId, household_id: homeSettings.id }).select().single();
             if (data && !error) setShoppingItems(prev => [...prev, data]);
+            else if (error) console.error('[addShoppingItem] failed:', error.message);
         },
         updateShoppingItem: async (si) => {
-            await supabase.from('shopping_items').update(si).eq('id', si.id);
+            const { error } = await supabase.from('shopping_items').update(si).eq('id', si.id);
+            if (error) { console.error('[updateShoppingItem] failed:', error.message); return; }
             setShoppingItems(prev => prev.map(x => x.id === si.id ? si : x));
         },
         deleteShoppingItem: async (id) => {
-            await supabase.from('shopping_items').delete().eq('id', id);
+            const { error } = await supabase.from('shopping_items').delete().eq('id', id);
+            if (error) { console.error('[deleteShoppingItem] failed:', error.message); return; }
             setShoppingItems(prev => prev.filter(x => x.id !== id));
         },
 
@@ -556,9 +566,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { data, error } = await supabase.from('shopping_database')
                 .insert({ name, household_id: homeSettings.id }).select().single();
             if (data && !error) setShoppingConcepts(prev => [...prev, data]);
+            else if (error) console.error('[addShoppingConcept] failed:', error.message);
         },
         deleteShoppingConcept: async (id) => {
-            await supabase.from('shopping_database').delete().eq('id', id);
+            const { error } = await supabase.from('shopping_database').delete().eq('id', id);
+            if (error) { console.error('[deleteShoppingConcept] failed:', error.message); return; }
             setShoppingConcepts(prev => prev.filter(x => x.id !== id));
         },
 

@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils, Loader2 } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -13,7 +13,7 @@ import { JoinHousehold } from './pages/JoinHousehold';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -158,6 +158,7 @@ const MobileNav = () => {
 const AppContent = () => {
   const { currentUser, needsProfileSetup, loading } = useAppContext();
   const location = useLocation();
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -165,6 +166,26 @@ const AppContent = () => {
       document.documentElement.classList.add(`theme-${currentUser.theme || 'cyber'}`);
     }
   }, [currentUser]);
+
+  // AppContext seeds currentUser/households/homeSettings from localStorage
+  // so the UI paints instantly, then verifies against Supabase in the
+  // background (loading=true until that first fetch resolves). Without this
+  // gate, a user could interact with — and write to — a stale cached
+  // household (e.g. one that got cleaned up, or from a broken earlier
+  // signup attempt) before the real data replaced it, silently losing
+  // whatever they added. Only gates the very first load; later `loading`
+  // toggles (switching households) don't blank the screen.
+  useEffect(() => {
+    if (!loading) setHasLoadedOnce(true);
+  }, [loading]);
+
+  if (currentUser && loading && !hasLoadedOnce && !location.pathname.startsWith('/join')) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   // Signed in, but setup (create/join a household) never finished — show a
   // real recovery screen instead of silently falling back to /auth, which
