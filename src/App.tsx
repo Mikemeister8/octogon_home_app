@@ -156,9 +156,10 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser, needsProfileSetup, loading } = useAppContext();
+  const { currentUser, needsProfileSetup, loading, retrySetup, logout } = useAppContext();
   const location = useLocation();
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -179,10 +180,41 @@ const AppContent = () => {
     if (!loading) setHasLoadedOnce(true);
   }, [loading]);
 
+  // If this first load hangs (e.g. a stuck network request, a bad cached
+  // session token needing a silent refresh that never comes back), the user
+  // used to be stuck on a spinner forever with no way out. Offer an escape
+  // hatch instead of leaving them stranded.
+  useEffect(() => {
+    if (hasLoadedOnce) { setIsSlow(false); return; }
+    const t = setTimeout(() => setIsSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, [hasLoadedOnce]);
+
   if (currentUser && loading && !hasLoadedOnce && !location.pathname.startsWith('/join')) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-6">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+          {isSlow && (
+            <div className="space-y-4 max-w-xs">
+              <p className="text-text-dim text-sm">Esto está tardando más de lo normal.</p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => retrySetup()}
+                  className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Reintentar
+                </button>
+                <button
+                  onClick={() => logout()}
+                  className="px-6 py-3 bg-foreground/5 hover:bg-foreground/10 text-text-dim rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

@@ -411,7 +411,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // which looked exactly like each person being in a separate, unsynced
     // household even though the data was shared correctly underneath.
     useEffect(() => {
-        if (!activeHouseholdId) return;
+        // Wait until the initial load is confirmed (not just a cached/stale
+        // activeHouseholdId from localStorage) before opening a socket, so a
+        // slow/blocked realtime connection on a bad network can never contend
+        // with — or get subscribed to the wrong household ahead of — the
+        // plain REST calls that log-in depends on.
+        if (!activeHouseholdId || loading) return;
 
         let debounceTimer: ReturnType<typeof setTimeout> | null = null;
         const refresh = () => {
@@ -435,7 +440,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (debounceTimer) clearTimeout(debounceTimer);
             supabase.removeChannel(channel);
         };
-    }, [activeHouseholdId]);
+    }, [activeHouseholdId, loading]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTEXT VALUE
