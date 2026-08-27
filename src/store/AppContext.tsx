@@ -70,6 +70,10 @@ interface AppState {
     needsProfileSetup: boolean;
     setupError: string | null;
     retrySetup: () => Promise<void>;
+    completeSetup: (action:
+        | { type: 'create'; householdName: string; userName: string }
+        | { type: 'join'; code: string; userName: string }
+    ) => Promise<void>;
 
     logout: () => Promise<void>;
     resetAllData: () => Promise<void>;
@@ -385,8 +389,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 setLoading(false);
                 handled = false;
             } else if (session?.user) {
-                // Only fetch if we are signing in OR if we don't have the user yet
-                if (event === 'SIGNED_IN' || !handled || !currentUser) {
+                // Only fetch if we are signing in OR if we haven't handled a session yet
+                if (event === 'SIGNED_IN' || !handled) {
                     handled = true;
                     await fetchUserData(session.user.id);
                 }
@@ -394,7 +398,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         return () => { listener.subscription.unsubscribe(); };
-    }, [currentUser]);
+        // Intentionally run once: fetchUserData always sets a fresh `currentUser`
+        // object, so depending on `currentUser` here re-subscribed this listener
+        // (and re-ran checkSession) on every single fetch, causing an unbounded
+        // refetch loop that looked like a permanently stuck loading screen.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTEXT VALUE
@@ -426,6 +435,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         retrySetup: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) await fetchUserData(user.id);
+        },
+
+        // Runs when a signed-in user has no household yet (needsProfileSetup)
+        // and needs to create or join one without going through signup again.
+        completeSetup: async (action) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
+
+            if (action.type === 'create') {
+                await createHouseholdInternal(user.id, action.householdName, action.userName);
+            } else {
+                await joinHouseholdByCodeInternal(user.id, action.code, action.userName);
+            }
+            await fetchUserData(user.id);
         },
 
         // ── Invitations ────────────────────────────────────────────────────────

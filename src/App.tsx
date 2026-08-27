@@ -8,6 +8,7 @@ import { Shopping } from './pages/Shopping';
 import { Settings } from './pages/Settings';
 import { Dashboards } from './pages/Dashboards';
 import { Auth } from './pages/Auth';
+import { CompleteSetup } from './pages/CompleteSetup';
 import { JoinHousehold } from './pages/JoinHousehold';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
@@ -155,7 +156,7 @@ const MobileNav = () => {
 };
 
 const AppContent = () => {
-  const { currentUser } = useAppContext();
+  const { currentUser, needsProfileSetup, loading } = useAppContext();
   const location = useLocation();
 
   useEffect(() => {
@@ -164,6 +165,14 @@ const AppContent = () => {
       document.documentElement.classList.add(`theme-${currentUser.theme || 'cyber'}`);
     }
   }, [currentUser]);
+
+  // Signed in, but setup (create/join a household) never finished — show a
+  // real recovery screen instead of silently falling back to /auth, which
+  // used to let people accidentally spin up a brand-new, disconnected
+  // household instead of the one they meant to join.
+  if (!currentUser && !loading && needsProfileSetup && !location.pathname.startsWith('/join')) {
+    return <CompleteSetup />;
+  }
 
   if (!currentUser && !location.pathname.startsWith('/join')) {
     return (
