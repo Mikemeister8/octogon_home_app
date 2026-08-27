@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { ListTodo, Plus, Trash2, CheckCircle2, Trophy, Loader2, Sparkles, X, Clock, Edit3, Save, Undo2, GripVertical } from 'lucide-react';
+import { ListTodo, Plus, Trash2, CheckCircle2, Trophy, Loader2, Sparkles, X, Clock, Edit3, Save, Undo2, ChevronUp, ChevronDown, Check } from 'lucide-react';
 
 export const Tasks = () => {
     const { tasks, completions, addTask, updateTask, deleteTask, addCompletion, removeCompletion, currentUser, homeSettings, tokenName } = useAppContext();
@@ -8,45 +8,73 @@ export const Tasks = () => {
     const [points, setPoints] = useState(10);
     const [allowMultiple, setAllowMultiple] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editPoints, setEditPoints] = useState(10);
-    const [draggedId, setDraggedId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
 
     if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
     const sortedTasks = [...tasks].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
 
+    // Runs an async action with immediate button feedback (disabled + spinner)
+    // and guards against double-taps firing the same action twice.
+    const runPending = async (key: string, fn: () => Promise<void>) => {
+        if (pendingActions.has(key)) return;
+        setPendingActions(prev => new Set(prev).add(key));
+        try {
+            await fn();
+        } finally {
+            setPendingActions(prev => { const next = new Set(prev); next.delete(key); return next; });
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title.trim() || !currentUser) return;
-        await addTask({
-            title: title.trim(),
-            default_points: points,
-            is_active: true,
-            allow_multiple_per_day: allowMultiple,
-            sort_order: tasks.length
-        });
-        setTitle('');
-        setPoints(10);
-        setIsAdding(false);
-    };
-
-    const handleComplete = async (taskId: string, tPoints: number) => {
-        if (!currentUser) return;
-        await addCompletion(taskId, currentUser.id, tPoints);
-    };
-
-    const handleUndoCompletion = async (taskId: string) => {
-        if (!currentUser) return;
-        // Find the most recent completion for this task by this user today
-        const todayStr = new Date().toDateString();
-        const todayCompletions = completions
-            .filter(c => c.task_id === taskId && c.user_id === currentUser.id && new Date(c.completed_at).toDateString() === todayStr)
-            .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
-        if (todayCompletions.length > 0) {
-            await removeCompletion(todayCompletions[0].id);
+        if (!title.trim() || !currentUser || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await addTask({
+                title: title.trim(),
+                default_points: points,
+                is_active: true,
+                allow_multiple_per_day: allowMultiple,
+                sort_order: tasks.length
+            });
+            setTitle('');
+            setPoints(10);
+            setIsAdding(false);
+        } finally {
+            setIsSubmitting(false);
         }
+    };
+
+    const handleComplete = (taskId: string, tPoints: number) => {
+        if (!currentUser) return;
+        return runPending(`complete-${taskId}`, () => addCompletion(taskId, currentUser.id, tPoints));
+    };
+
+    const handleUndoCompletion = (taskId: string) => {
+        if (!currentUser) return;
+        return runPending(`undo-${taskId}`, async () => {
+            // Find the most recent completion for this task by this user today
+            const todayStr = new Date().toDateString();
+            const todayCompletions = completions
+                .filter(c => c.task_id === taskId && c.user_id === currentUser.id && new Date(c.completed_at).toDateString() === todayStr)
+                .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
+            if (todayCompletions.length > 0) {
+                await removeCompletion(todayCompletions[0].id);
+            }
+        });
+    };
+
+    const handleDelete = (taskId: string) => {
+        return runPending(`delete-${taskId}`, async () => {
+            await deleteTask(taskId);
+            setConfirmDeleteId(null);
+        });
     };
 
     const startEdit = (task: typeof tasks[0]) => {
@@ -55,39 +83,33 @@ export const Tasks = () => {
         setEditPoints(task.default_points);
     };
 
-    const saveEdit = async () => {
-        if (!editingId) return;
+    const saveEdit = () => {
+        if (!editingId || !editTitle.trim()) return;
         const task = tasks.find(t => t.id === editingId);
         if (!task) return;
-        await updateTask({ ...task, title: editTitle.trim(), default_points: editPoints });
-        setEditingId(null);
+        return runPending(`save-${editingId}`, async () => {
+            await updateTask({ ...task, title: editTitle.trim(), default_points: editPoints });
+            setEditingId(null);
+        });
     };
 
-    // Drag and drop reorder
-    const handleDragStart = (taskId: string) => {
-        setDraggedId(taskId);
+    // Reorder via explicit up/down controls — works on touch devices, unlike
+    // HTML5 drag-and-drop (which only fires from a mouse, not a finger).
+    const moveTask = (taskId: string, direction: -1 | 1) => {
+        const idx = sortedTasks.findIndex(t => t.id === taskId);
+        const swapIdx = idx + direction;
+        if (swapIdx < 0 || swapIdx >= sortedTasks.length) return;
+        const a = sortedTasks[idx];
+        const b = sortedTasks[swapIdx];
+        return runPending(`move-${taskId}`, async () => {
+            await Promise.all([
+                updateTask({ ...a, sort_order: swapIdx }),
+                updateTask({ ...b, sort_order: idx }),
+            ]);
+        });
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
-
-    const handleDrop = async (targetTaskId: string) => {
-        if (!draggedId || draggedId === targetTaskId) return;
-        const newOrder = [...sortedTasks];
-        const dragIdx = newOrder.findIndex(t => t.id === draggedId);
-        const dropIdx = newOrder.findIndex(t => t.id === targetTaskId);
-        const [moved] = newOrder.splice(dragIdx, 1);
-        newOrder.splice(dropIdx, 0, moved);
-
-        // Update sort orders
-        for (let i = 0; i < newOrder.length; i++) {
-            if (newOrder[i].sort_order !== i) {
-                await updateTask({ ...newOrder[i], sort_order: i });
-            }
-        }
-        setDraggedId(null);
-    };
+    const iconBtnClass = "p-2.5 rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none";
 
     return (
         <div className="p-4 sm:p-8 space-y-8 max-w-6xl mx-auto pb-20">
@@ -105,7 +127,7 @@ export const Tasks = () => {
 
                 <button
                     onClick={() => setIsAdding(!isAdding)}
-                    className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all active:scale-95 shadow-xl shadow-primary/30 relative z-10 text-xs uppercase tracking-widest"
+                    className="bg-primary hover:bg-primary/90 active:bg-primary text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all active:scale-95 shadow-xl shadow-primary/30 relative z-10 text-xs uppercase tracking-widest"
                 >
                     {isAdding ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                     {isAdding ? 'Cerrar' : 'Nueva Tarea'}
@@ -122,6 +144,7 @@ export const Tasks = () => {
                             </label>
                             <input
                                 required
+                                autoFocus
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 className="w-full bg-foreground/5 border border-foreground/10 rounded-2xl p-5 focus:outline-none focus:border-primary transition-all font-bold placeholder:opacity-30"
@@ -140,7 +163,7 @@ export const Tasks = () => {
                                     onChange={e => setPoints(Number(e.target.value))}
                                     className="flex-1 h-2 bg-foreground/10 rounded-full appearance-none cursor-pointer accent-primary ml-4"
                                 />
-                                <div className="bg-primary px-6 py-3 rounded-xl font-black text-white text-lg shadow-lg">
+                                <div className="bg-primary px-6 py-3 rounded-xl font-black text-white text-lg shadow-lg min-w-[4.5rem] text-center">
                                     {points}
                                 </div>
                             </div>
@@ -153,29 +176,32 @@ export const Tasks = () => {
                                 <button
                                     type="button"
                                     onClick={() => setAllowMultiple(false)}
-                                    className={`py-4 rounded-2xl font-bold transition-all border ${!allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10'}`}
+                                    className={`py-4 rounded-2xl font-bold transition-all border active:scale-95 ${!allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10 hover:border-primary/30'}`}
                                 >
                                     Una vez al día
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setAllowMultiple(true)}
-                                    className={`py-4 rounded-2xl font-bold transition-all border ${allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10'}`}
+                                    className={`py-4 rounded-2xl font-bold transition-all border active:scale-95 ${allowMultiple ? 'bg-primary text-white border-primary shadow-lg' : 'bg-foreground/5 text-text-dim border-foreground/10 hover:border-primary/30'}`}
                                 >
                                     Varias veces
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <button className="w-full py-5 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-xl shadow-primary/20 transition-all active:scale-95 text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-                        <Plus className="w-5 h-5" />
-                        Crear Tarea
+                    <button
+                        disabled={!title.trim() || isSubmitting}
+                        className="w-full py-5 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-xl shadow-primary/20 transition-all active:scale-95 text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                        {isSubmitting ? 'Creando...' : 'Crear Tarea'}
                     </button>
                 </form>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedTasks.length > 0 ? sortedTasks.map(task => {
+                {sortedTasks.length > 0 ? sortedTasks.map((task, idx) => {
                     const todayStr = new Date().toDateString();
                     const todayCompletions = completions.filter(c =>
                         c.task_id === task.id &&
@@ -185,31 +211,83 @@ export const Tasks = () => {
                     const isCompletedToday = myTodayCompletions.length > 0;
                     const canComplete = task.allow_multiple_per_day || !isCompletedToday;
                     const isEditing = editingId === task.id;
+                    const isCompletingPending = pendingActions.has(`complete-${task.id}`);
+                    const isUndoingPending = pendingActions.has(`undo-${task.id}`);
+                    const isDeletingPending = pendingActions.has(`delete-${task.id}`);
+                    const isSavingPending = pendingActions.has(`save-${task.id}`);
+                    const isMovingPending = pendingActions.has(`move-${task.id}`);
 
                     return (
                         <div
                             key={task.id}
-                            draggable
-                            onDragStart={() => handleDragStart(task.id)}
-                            onDragOver={handleDragOver}
-                            onDrop={() => handleDrop(task.id)}
-                            className={`bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl group hover:border-primary/20 hover:translate-y-[-4px] transition-all relative overflow-hidden ${draggedId === task.id ? 'opacity-50 scale-95' : ''}`}
+                            className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl group hover:border-primary/20 hover:translate-y-[-4px] transition-all relative overflow-hidden"
                         >
-                            {/* Drag handle */}
-                            <div className="absolute top-4 left-4 cursor-grab active:cursor-grabbing text-text-dim/20 hover:text-text-dim/60 transition-colors">
-                                <GripVertical className="w-5 h-5" />
+                            {/* Reorder controls — always visible and touch-friendly */}
+                            <div className="absolute top-4 left-4 flex flex-col gap-0.5 z-10">
+                                <button
+                                    onClick={() => moveTask(task.id, -1)}
+                                    disabled={idx === 0 || isMovingPending}
+                                    className="p-1.5 rounded-lg text-text-dim/40 hover:text-primary hover:bg-primary/10 active:scale-90 transition-all disabled:opacity-20 disabled:pointer-events-none"
+                                    aria-label="Subir tarea"
+                                    title="Subir"
+                                >
+                                    <ChevronUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => moveTask(task.id, 1)}
+                                    disabled={idx === sortedTasks.length - 1 || isMovingPending}
+                                    className="p-1.5 rounded-lg text-text-dim/40 hover:text-primary hover:bg-primary/10 active:scale-90 transition-all disabled:opacity-20 disabled:pointer-events-none"
+                                    aria-label="Bajar tarea"
+                                    title="Bajar"
+                                >
+                                    <ChevronDown className="w-4 h-4" />
+                                </button>
                             </div>
 
-                            {/* Actions: Edit + Delete */}
-                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                {!isEditing && (
-                                    <button onClick={() => startEdit(task)} className="p-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl transition-all">
-                                        <Edit3 className="w-4 h-4" />
-                                    </button>
+                            {/* Actions: Edit + Delete (always visible on touch, fades in on desktop hover) */}
+                            <div className="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
+                                {confirmDeleteId === task.id ? (
+                                    <>
+                                        <button
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            className={`${iconBtnClass} bg-foreground/10 text-text-dim hover:bg-foreground/20`}
+                                            aria-label="Cancelar borrado"
+                                            title="Cancelar"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(task.id)}
+                                            disabled={isDeletingPending}
+                                            className={`${iconBtnClass} bg-red-500 text-white hover:bg-red-600`}
+                                            aria-label="Confirmar borrado"
+                                            title="Confirmar borrado"
+                                        >
+                                            {isDeletingPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {!isEditing && (
+                                            <button
+                                                onClick={() => startEdit(task)}
+                                                className={`${iconBtnClass} bg-primary/10 text-primary hover:bg-primary hover:text-white`}
+                                                aria-label="Editar tarea"
+                                                title="Editar"
+                                            >
+                                                <Edit3 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => setConfirmDeleteId(task.id)}
+                                            className={`${iconBtnClass} bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white`}
+                                            aria-label="Eliminar tarea"
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </>
                                 )}
-                                <button onClick={() => deleteTask(task.id)} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
                             </div>
 
                             <div className="mb-6 mt-4">
@@ -220,6 +298,7 @@ export const Tasks = () => {
                                 {isEditing ? (
                                     <div className="space-y-3">
                                         <input
+                                            autoFocus
                                             value={editTitle}
                                             onChange={e => setEditTitle(e.target.value)}
                                             className="w-full bg-foreground/5 border border-primary/30 rounded-xl p-3 font-bold focus:outline-none text-foreground"
@@ -232,10 +311,19 @@ export const Tasks = () => {
                                                 className="w-20 bg-foreground/5 border border-foreground/10 rounded-xl p-2 text-center font-bold focus:outline-none text-foreground"
                                             />
                                             <span className="text-xs text-text-dim font-bold">{tokenName}</span>
-                                            <button onClick={saveEdit} className="ml-auto p-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
-                                                <Save className="w-4 h-4" />
+                                            <button
+                                                onClick={saveEdit}
+                                                disabled={!editTitle.trim() || isSavingPending}
+                                                className={`${iconBtnClass} ml-auto bg-green-500 text-white hover:bg-green-600`}
+                                                aria-label="Guardar cambios"
+                                            >
+                                                {isSavingPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                             </button>
-                                            <button onClick={() => setEditingId(null)} className="p-2 bg-foreground/10 text-text-dim rounded-xl hover:bg-foreground/20 transition-all">
+                                            <button
+                                                onClick={() => setEditingId(null)}
+                                                className={`${iconBtnClass} bg-foreground/10 text-text-dim hover:bg-foreground/20`}
+                                                aria-label="Cancelar edición"
+                                            >
                                                 <X className="w-4 h-4" />
                                             </button>
                                         </div>
@@ -269,23 +357,25 @@ export const Tasks = () => {
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => handleComplete(task.id, task.default_points)}
-                                    disabled={!canComplete}
-                                    className={`flex-1 py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg uppercase text-[10px] tracking-widest border border-foreground/10 ${!canComplete
+                                    disabled={!canComplete || isCompletingPending}
+                                    className={`flex-1 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg uppercase text-[10px] tracking-widest border border-foreground/10 disabled:pointer-events-none ${!canComplete
                                         ? 'bg-foreground/5 text-text-dim/30 cursor-not-allowed'
                                         : 'bg-foreground/5 hover:bg-primary text-text-dim hover:text-white hover:border-primary'
                                         }`}
                                 >
-                                    <Plus className="w-4 h-4" />
+                                    {isCompletingPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                                     {isCompletedToday && !task.allow_multiple_per_day ? 'Hecho hoy' : 'Completar'}
                                 </button>
 
                                 {isCompletedToday && (
                                     <button
                                         onClick={() => handleUndoCompletion(task.id)}
-                                        className="py-4 px-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg text-[10px] tracking-widest border border-foreground/10 bg-foreground/5 hover:bg-red-500 text-text-dim hover:text-white hover:border-red-500"
+                                        disabled={isUndoingPending}
+                                        className="py-4 px-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg text-[10px] tracking-widest border border-foreground/10 bg-foreground/5 hover:bg-red-500 text-text-dim hover:text-white hover:border-red-500 disabled:opacity-50 disabled:pointer-events-none"
                                         title="Deshacer última realización de hoy"
+                                        aria-label="Deshacer última realización de hoy"
                                     >
-                                        <Undo2 className="w-4 h-4" />
+                                        {isUndoingPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
                                     </button>
                                 )}
                             </div>
