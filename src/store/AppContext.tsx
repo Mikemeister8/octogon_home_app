@@ -389,8 +389,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 setLoading(false);
                 handled = false;
             } else if (session?.user) {
-                // Only fetch if we are signing in OR if we don't have the user yet
-                if (event === 'SIGNED_IN' || !handled || !currentUser) {
+                // Only fetch if we are signing in OR if we haven't handled a session yet
+                if (event === 'SIGNED_IN' || !handled) {
                     handled = true;
                     await fetchUserData(session.user.id);
                 }
@@ -398,7 +398,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         return () => { listener.subscription.unsubscribe(); };
-    }, [currentUser]);
+        // Intentionally run once: fetchUserData always sets a fresh `currentUser`
+        // object, so depending on `currentUser` here re-subscribed this listener
+        // (and re-ran checkSession) on every single fetch, causing an unbounded
+        // refetch loop that looked like a permanently stuck loading screen.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTEXT VALUE
