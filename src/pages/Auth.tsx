@@ -221,9 +221,17 @@ export const Auth = () => {
                                 Ya tengo cuenta → Iniciar sesión
                             </button>
 
-                            <div className="pt-2 flex items-center justify-center gap-6 opacity-20">
-                                <ShieldCheck className="w-5 h-5" />
-                                <Home className="w-5 h-5" />
+                            <div className="pt-2 flex items-center justify-center gap-6">
+                                <ShieldCheck className="w-5 h-5 opacity-20" />
+                                <button
+                                    type="button"
+                                    onClick={() => setScreen('login')}
+                                    title="Iniciar sesión"
+                                    aria-label="Iniciar sesión"
+                                    className="text-text-dim/40 hover:text-primary transition-colors"
+                                >
+                                    <Home className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
                     )}
