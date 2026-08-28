@@ -100,7 +100,11 @@ const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> =>
 
 const hardReset = () => {
     localStorage.clear();
-    window.location.href = '/auth';
+    // ?mode=login tells Auth.tsx to open straight on the login screen — someone
+    // who just signed out (or got bounced by a stuck auth client) already has
+    // an account; the "create/join a household" welcome screen is the wrong
+    // default for them.
+    window.location.href = '/auth?mode=login';
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,11 +147,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => { localStorage.setItem('octo_cache_concepts', JSON.stringify(shoppingConcepts)); }, [shoppingConcepts]);
 
     // ── Internal: load all data for a specific household ──────────────────────
+    // Only two things here actually depend on each other: membersProfiles and
+    // completions both need memberIds, which comes from the memberships query.
+    // Everything else (household, invitation, tasks, reminders, shopping) only
+    // needs householdId, which we already have — so they all fire in one round
+    // trip instead of the five sequential ones this used to take.
     const loadHouseholdData = async (householdId: string) => {
-        const [hRes, invRes] = await Promise.all([
+        const [hRes, invRes, membershipsRes, tasksRes, remsRes, shopsRes, dbRes] = await Promise.all([
             supabase.from('households').select('*').eq('id', householdId).single(),
             supabase.from('invitations').select('code').eq('household_id', householdId)
-                .order('created_at', { ascending: false }).limit(1).maybeSingle()
+                .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+            supabase.from('memberships').select('user_id').eq('household_id', householdId),
+            supabase.from('tasks').select('*').eq('household_id', householdId),
+            supabase.from('reminders').select('*').eq('household_id', householdId),
+            supabase.from('shopping_items').select('*').eq('household_id', householdId),
+            supabase.from('shopping_database').select('*').eq('household_id', householdId),
         ]);
 
         if (hRes.data) {
@@ -161,16 +175,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setHomeSettings(mapped);
         }
 
-        // Members via memberships
-        const { data: memberships } = await supabase
-            .from('memberships').select('user_id').eq('household_id', householdId);
-        const memberIds = (memberships || []).map((m: any) => m.user_id);
+        if (tasksRes.data) setTasks(tasksRes.data);
+        if (remsRes.data) setReminders(remsRes.data);
+        if (shopsRes.data) setShoppingItems(shopsRes.data);
+        if (dbRes.data) setShoppingConcepts(dbRes.data);
 
-        const { data: membersProfiles } = memberIds.length > 0
-            ? await supabase.from('profiles').select('*').in('id', memberIds)
-            : { data: [] };
+        const memberIds = (membershipsRes.data || []).map((m: any) => m.user_id);
 
-        const mappedUsers: User[] = (membersProfiles || []).map((p: any) => ({
+        const [membersRes, compsRes] = await Promise.all([
+            memberIds.length > 0
+                ? supabase.from('profiles').select('*').in('id', memberIds)
+                : Promise.resolve({ data: [] as any[] }),
+            memberIds.length > 0
+                ? supabase.from('task_completions').select('*').in('user_id', memberIds)
+                : Promise.resolve({ data: [] as any[] }),
+        ]);
+
+        const mappedUsers: User[] = (membersRes.data || []).map((p: any) => ({
             id: p.id,
             email: '',
             full_name: p.full_name || 'Usuario',
@@ -180,25 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
         setUsers(mappedUsers);
 
-        // Data queries in parallel
-        const [tasksRes, remsRes, shopsRes, dbRes] = await Promise.all([
-            supabase.from('tasks').select('*').eq('household_id', householdId),
-            supabase.from('reminders').select('*').eq('household_id', householdId),
-            supabase.from('shopping_items').select('*').eq('household_id', householdId),
-            supabase.from('shopping_database').select('*').eq('household_id', householdId),
-        ]);
-
-        if (tasksRes.data) setTasks(tasksRes.data);
-        if (remsRes.data) setReminders(remsRes.data);
-        if (shopsRes.data) setShoppingItems(shopsRes.data);
-        if (dbRes.data) setShoppingConcepts(dbRes.data);
-
-        // Completions from ALL members
-        if (memberIds.length > 0) {
-            const { data: comps } = await supabase
-                .from('task_completions').select('*').in('user_id', memberIds);
-            if (comps) setCompletions(comps);
-        }
+        if (compsRes.data) setCompletions(compsRes.data);
     };
 
     // ── Internal: create a brand-new household ────────────────────────────────
@@ -276,9 +279,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setNeedsProfileSetup(false);
             setSetupError(null);
 
-            // Get profile
-            const { data: profile } = await supabase
-                .from('profiles').select('*').eq('id', userId).single();
+            // Get profile. Also kick off the memberships fetch in the same round
+            // trip when there's no pending invite-link join to resolve first —
+            // memberships only need userId, not the profile, so there's no real
+            // dependency between them. (When a join is pending, that join can
+            // create a new membership row, so memberships must be re-fetched
+            // after it runs — skip the early fetch in that case.)
+            const pendingJoinCodeEarly = localStorage.getItem('octo_join_code');
+            const [profileRes, earlyMembershipsRes] = await Promise.all([
+                supabase.from('profiles').select('*').eq('id', userId).single(),
+                pendingJoinCodeEarly
+                    ? Promise.resolve(null)
+                    : supabase.from('memberships').select('household_id').eq('user_id', userId),
+            ]);
+            const profile = profileRes.data;
 
             if (!profile) {
                 console.log('[FETCH] No profile found, checking pending action...');
@@ -324,20 +338,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(mappedUser);
 
             // Check for pending join (existing user visiting invite link)
-            const pendingJoinCode = localStorage.getItem('octo_join_code');
-            if (pendingJoinCode) {
+            let memberships = earlyMembershipsRes?.data;
+            if (pendingJoinCodeEarly) {
                 try {
-                    await joinHouseholdByCodeInternal(userId, pendingJoinCode, profile.full_name);
-                    localStorage.removeItem('octo_join_code');
+                    await joinHouseholdByCodeInternal(userId, pendingJoinCodeEarly, profile.full_name);
                 } catch (e) {
                     console.warn('[FETCH] Auto-join from pending code failed:', e);
-                    localStorage.removeItem('octo_join_code');
                 }
+                localStorage.removeItem('octo_join_code');
+                // Membership set just changed (or a join attempt happened) —
+                // the early fetch above was skipped for this path, so fetch fresh.
+                const { data } = await supabase
+                    .from('memberships').select('household_id').eq('user_id', userId);
+                memberships = data;
             }
-
-            // Get all memberships
-            const { data: memberships } = await supabase
-                .from('memberships').select('household_id').eq('user_id', userId);
             const householdIds = (memberships || []).map((m: any) => m.household_id);
 
             if (householdIds.length === 0) {

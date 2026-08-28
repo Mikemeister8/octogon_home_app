@@ -18,7 +18,11 @@ type Screen =
 export const Auth = () => {
     const [screen, setScreen] = useState<Screen>(() => {
         const pending = localStorage.getItem('octo_join_code');
-        return pending ? 'join_code' : 'welcome';
+        if (pending) return 'join_code';
+        // Set by logout/hard-reset: someone who just signed out already has an
+        // account, so open straight on login instead of "create/join a household".
+        if (new URLSearchParams(window.location.search).get('mode') === 'login') return 'login';
+        return 'welcome';
     });
 
     // Shared fields

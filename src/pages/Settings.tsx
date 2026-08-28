@@ -112,7 +112,7 @@ export const Settings = () => {
                     <p className="text-text-dim mt-1 font-bold uppercase text-[10px] tracking-widest">Personaliza tu centro de mando</p>
                 </div>
                 <button onClick={logout} className="sm:ml-auto relative z-10 p-4 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl transition-all flex items-center gap-2 font-black text-xs uppercase tracking-widest group/btn">
-                    <LogOut className="w-5 h-5 group-hover/btn:-translate-x-1 transition-transform" /> Salir de Hogar
+                    <LogOut className="w-5 h-5 group-hover/btn:-translate-x-1 transition-transform" /> Cerrar sesión
                 </button>
             </header>
 
