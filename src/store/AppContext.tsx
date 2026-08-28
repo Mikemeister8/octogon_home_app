@@ -81,6 +81,28 @@ interface AppState {
 
 export const AppContext = createContext<AppState | null>(null);
 
+// supabase-js serializes every auth call (getSession/getUser/signOut) — and,
+// internally, every REST query too, since each one calls getSession() first
+// to attach the current token — behind a single in-memory mutex on the
+// client. A silent token refresh that never returns (a throttled background
+// tab, a flaky mobile connection) wedges that mutex for the rest of the page
+// life: every later auth/data call queues behind it and hangs forever, with
+// no userland API to clear it. The only guaranteed escape is a full reload,
+// which builds a fresh client with a fresh mutex.
+const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> =>
+    new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+        promise.then(
+            (v) => { clearTimeout(timer); resolve(v); },
+            (e) => { clearTimeout(timer); reject(e); }
+        );
+    });
+
+const hardReset = () => {
+    localStorage.clear();
+    window.location.href = '/auth';
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PROVIDER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,8 +492,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loading, needsProfileSetup, setupError,
 
         retrySetup: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) await fetchUserData(user.id);
+            // getUser() and fetchUserData() both go through the shared auth
+            // mutex above — if it's wedged, race the whole thing against a
+            // timeout instead of hanging the "Reintentar" button forever too.
+            try {
+                const { data: { user } } = await withTimeout(supabase.auth.getUser());
+                if (user) await withTimeout(fetchUserData(user.id), 10000);
+            } catch (e) {
+                console.error('[retrySetup] auth client stuck, forcing a hard reload:', e);
+                hardReset();
+            }
         },
 
         // Runs when a signed-in user has no household yet (needsProfileSetup)
@@ -612,19 +642,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
         // ── Logout ─────────────────────────────────────────────────────────────
+        // Always ends in a full reload (not just resetting React state): that's
+        // what actually guarantees a clean slate — a fresh auth client (in case
+        // the shared mutex above is wedged, which is exactly when someone reaches
+        // for "Cerrar sesión" as an escape hatch) and no leftover realtime
+        // subscriptions from the previous session.
         logout: async () => {
-            await supabase.auth.signOut();
-            localStorage.clear();
-            setCurrentUser(null);
-            setHomeSettings(null);
-            setHouseholds([]);
-            setActiveHouseholdId(null);
-            setUsers([]);
-            setTasks([]);
-            setCompletions([]);
-            setReminders([]);
-            setShoppingItems([]);
-            setShoppingConcepts([]);
+            try {
+                await withTimeout(supabase.auth.signOut(), 4000);
+            } catch (e) {
+                console.warn('[logout] signOut stuck or failed, forcing a hard reload anyway:', e);
+            }
+            hardReset();
         },
 
         resetAllData: async () => {
