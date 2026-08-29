@@ -51,6 +51,13 @@
     width: 100%;
     margin: 0;
     padding: 0;
+    /* Mobile browsers' native pull-to-refresh reloads the whole page, which
+       re-runs the entire auth bootstrap from zero — a bad place for anything
+       to go wrong, and has been reported to drop the session outright. This
+       stops the gesture from ever reaching that reload in the first place;
+       the in-app refresh button (bottom nav / sidebar) is the safe way to
+       refresh data now. */
+    overscroll-behavior-y: contain;
   }
 
   #root {
