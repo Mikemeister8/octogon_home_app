@@ -279,18 +279,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setNeedsProfileSetup(false);
             setSetupError(null);
 
-            // Get profile. Also kick off the memberships fetch in the same round
-            // trip when there's no pending invite-link join to resolve first —
-            // memberships only need userId, not the profile, so there's no real
-            // dependency between them. (When a join is pending, that join can
-            // create a new membership row, so memberships must be re-fetched
-            // after it runs — skip the early fetch in that case.)
-            const pendingJoinCodeEarly = localStorage.getItem('octo_join_code');
-            const [profileRes, earlyMembershipsRes] = await Promise.all([
+            // Get profile. Memberships only need userId, not the profile, so
+            // there's no real dependency between them — fetch both in the same
+            // round trip instead of one after the other.
+            const [profileRes, membershipsRes] = await Promise.all([
                 supabase.from('profiles').select('*').eq('id', userId).single(),
-                pendingJoinCodeEarly
-                    ? Promise.resolve(null)
-                    : supabase.from('memberships').select('household_id').eq('user_id', userId),
+                supabase.from('memberships').select('household_id').eq('user_id', userId),
             ]);
             const profile = profileRes.data;
 
@@ -337,22 +331,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
             setCurrentUser(mappedUser);
 
-            // Check for pending join (existing user visiting invite link)
-            let memberships = earlyMembershipsRes?.data;
-            if (pendingJoinCodeEarly) {
-                try {
-                    await joinHouseholdByCodeInternal(userId, pendingJoinCodeEarly, profile.full_name);
-                } catch (e) {
-                    console.warn('[FETCH] Auto-join from pending code failed:', e);
-                }
-                localStorage.removeItem('octo_join_code');
-                // Membership set just changed (or a join attempt happened) —
-                // the early fetch above was skipped for this path, so fetch fresh.
-                const { data } = await supabase
-                    .from('memberships').select('household_id').eq('user_id', userId);
-                memberships = data;
-            }
-            const householdIds = (memberships || []).map((m: any) => m.household_id);
+            // Logging in never joins a household on its own — that used to happen
+            // silently here whenever a stray `octo_join_code` was sitting in
+            // localStorage (e.g. left over from someone having backed out of the
+            // invite-code screen earlier in the same tab), which could join an
+            // account to a household nobody asked for in that action. Joining is
+            // now only ever a deliberate action: the invite-code signup flow
+            // (which uses octo_pending_action, not this), or "Unirse a otro
+            // hogar" in Settings while already logged in.
+            const householdIds = (membershipsRes.data || []).map((m: any) => m.household_id);
 
             if (householdIds.length === 0) {
                 console.warn('[FETCH] User has profile but no households');
