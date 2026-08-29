@@ -133,15 +133,14 @@ export const Auth = () => {
     };
 
     // ── Login ────────────────────────────────────────────────────────────────
+    // Logging in never joins a household — it only ever opens your own existing
+    // account. Joining is a separate, deliberate action (the invite-code signup
+    // flow, or "Unirse a otro hogar" in Settings once you're in).
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
         try {
-            // If there's a join code pending, save it so fetchUserData can handle it after login
-            if (inviteCode && codeStatus === 'valid') {
-                localStorage.setItem('octo_join_code', inviteCode.toUpperCase());
-            }
             const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
             if (authErr) throw authErr;
         } catch (err: any) {
@@ -149,6 +148,20 @@ export const Auth = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Login never joins a household (see handleLogin), so any leftover invite
+    // state must not follow you there — otherwise backing out of the code
+    // screen earlier in this tab, then reaching login by any other route (the
+    // house icon, "Ya tengo cuenta", "Ir a Iniciar sesión"), would still show
+    // "te unirás a X" for a join that no longer happens.
+    const goToLogin = () => {
+        localStorage.removeItem('octo_join_code');
+        setInviteCode('');
+        setCodeStatus('idle');
+        setJoinHouseholdName('');
+        setError(null);
+        setScreen('login');
     };
 
     // ── UI helpers ───────────────────────────────────────────────────────────
@@ -215,7 +228,7 @@ export const Auth = () => {
                             </div>
 
                             <button
-                                onClick={() => setScreen('login')}
+                                onClick={goToLogin}
                                 className="w-full text-center text-sm text-text-dim hover:text-primary transition-colors pt-2"
                             >
                                 Ya tengo cuenta → Iniciar sesión
@@ -225,7 +238,7 @@ export const Auth = () => {
                                 <ShieldCheck className="w-5 h-5 opacity-20" />
                                 <button
                                     type="button"
-                                    onClick={() => setScreen('login')}
+                                    onClick={goToLogin}
                                     title="Iniciar sesión"
                                     aria-label="Iniciar sesión"
                                     className="text-text-dim/40 hover:text-primary transition-colors"
@@ -359,7 +372,7 @@ export const Auth = () => {
                                 </button>
 
                                 <button
-                                    onClick={() => setScreen('login')}
+                                    onClick={goToLogin}
                                     className="w-full text-center text-sm text-text-dim hover:text-primary transition-colors"
                                 >
                                     Ya tengo cuenta → Iniciar sesión
@@ -416,18 +429,9 @@ export const Auth = () => {
                     {/* ── LOGIN ────────────────────────────────────────────── */}
                     {screen === 'login' && (
                         <form onSubmit={handleLogin} className="relative z-10">
-                            {/* Arrived here from an invite link/code ("Ya tengo cuenta" on the
-                                join_code screen) → back should return there, not to the generic
-                                welcome screen, or the invite context feels lost mid-flow. */}
-                            <BackBtn to={inviteCode ? 'join_code' : 'welcome'} />
+                            <BackBtn to="welcome" />
                             <h2 className="text-2xl font-black mb-1">Iniciar sesión</h2>
                             <p className="text-text-dim text-sm mb-6">Bienvenido de vuelta.</p>
-
-                            {inviteCode && codeStatus === 'valid' && (
-                                <div className="mb-4 p-3 bg-primary/10 rounded-2xl border border-primary/20 text-xs font-bold text-primary">
-                                    Al entrar, te unirás automáticamente a: {joinHouseholdName}
-                                </div>
-                            )}
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -470,7 +474,7 @@ export const Auth = () => {
                                 Si no ves el correo, revisa tu carpeta de Spam.
                             </div>
                             <button
-                                onClick={() => setScreen('login')}
+                                onClick={goToLogin}
                                 className="w-full py-4 bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-foreground rounded-2xl font-bold transition-all"
                             >
                                 Ir a Iniciar sesión
