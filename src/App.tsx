@@ -138,7 +138,7 @@ const MobileNav = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-panel border-t border-foreground/5 lg:hidden z-50 px-1 pb-safe-area shadow-md">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+      <div className="flex justify-around items-center h-24 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -147,8 +147,8 @@ const MobileNav = () => {
               to={item.path}
               className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors  ${isActive ? 'text-primary' : 'text-text-dim/40'}`}
             >
-              <item.icon className="w-5 h-5" />
-              <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
+              <item.icon className="w-7 h-7" />
+              <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
             </Link>
           );
         })}
@@ -156,8 +156,8 @@ const MobileNav = () => {
           to="/settings"
           className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors  ${location.pathname === '/settings' ? 'text-primary' : 'text-text-dim/40'}`}
         >
-          <SettingsIcon className="w-5 h-5" />
-          <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
+          <SettingsIcon className="w-7 h-7" />
+          <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
         </Link>
         {/* Manual refresh — re-fetches the active household's data in place,
             no page reload. A native pull-to-refresh reloads the whole page
@@ -169,8 +169,8 @@ const MobileNav = () => {
           disabled={refreshing}
           className="flex flex-col items-center justify-center flex-1 py-2 transition-colors text-text-dim/40 disabled:opacity-60"
         >
-          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-primary' : ''}`} />
-          <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5 opacity-0">Actualizar</span>
+          <RefreshCw className={`w-7 h-7 ${refreshing ? 'animate-spin text-primary' : ''}`} />
+          <span className="text-[8px] font-black uppercase tracking-tighter mt-1 opacity-0">Actualizar</span>
         </button>
       </div>
     </nav>
@@ -259,7 +259,7 @@ const AppContent = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground pb-24 lg:pb-0 lg:pl-72 selection:bg-primary selection:text-white">
+    <div className="flex min-h-screen bg-background text-foreground pb-32 lg:pb-0 lg:pl-72 selection:bg-primary selection:text-white">
       <ScrollToTop />
       <Sidebar />
       <main className="flex-1 w-full max-w-7xl mx-auto">

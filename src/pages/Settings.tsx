@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle, Copy, Users } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Home, User as UserIcon, Palette, Sun, Zap, Share2, LogOut, Loader2, Plus, Trash2, AlertTriangle, Copy, Users, Trophy, ShoppingCart, Calendar, Utensils } from 'lucide-react';
 import { ICONS } from '../utils/icons';
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#00FF88', '#FF5D00'];
@@ -12,7 +12,8 @@ export const Settings = () => {
         currentUser, setCurrentUser,
         homeSettings, setHomeSettings,
         shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
-        generateInviteCode, resetAllData, logout,
+        generateInviteCode, logout,
+        resetRanking, resetShoppingList, resetShoppingDatabase, resetReminders, resetMenus,
         joinHouseholdByCode, households, activeHouseholdId, switchHousehold,
         users
     } = useAppContext();
@@ -34,6 +35,7 @@ export const Settings = () => {
 
     const [savedSection, setSavedSection] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [resettingModule, setResettingModule] = useState<string | null>(null);
 
     useEffect(() => {
         if (homeSettings) {
@@ -540,7 +542,7 @@ export const Settings = () => {
                 </div>
             </div>
 
-            {/* Reset App Section */}
+            {/* Reset App Section — by module, tasks are never touched */}
             <div className="bg-panel border border-red-500/20 rounded-[2.5rem] p-10 shadow-2xl space-y-6">
                 <div className="flex items-center gap-4">
                     <div className="p-4 bg-red-500/10 rounded-3xl">
@@ -548,22 +550,40 @@ export const Settings = () => {
                     </div>
                     <div>
                         <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Zona de Peligro</h2>
-                        <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest">Resetear datos de la app</p>
+                        <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest">Resetear datos por módulo</p>
                     </div>
                 </div>
-                <p className="text-sm text-text-dim">Esto eliminará <strong>todas las tareas realizadas</strong>, <strong>puntos acumulados</strong> y la <strong>lista de la compra</strong>. Las tareas, los miembros y la configuración se mantendrán. Esta acción no se puede deshacer.</p>
-                <button
-                    onClick={async () => {
-                        if (window.confirm('¿Estás completamente seguro? Se borrarán TODOS los puntos, rankings y la lista de la compra. Las tareas y miembros se mantienen.')) {
-                            await resetAllData();
-                            alert('¡App reseteada! Todos los datos de actividad se han eliminado.');
-                        }
-                    }}
-                    className="w-full py-5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 border border-red-500/20"
-                >
-                    <Trash2 className="w-5 h-5" />
-                    Resetear Toda la Actividad
-                </button>
+                <p className="text-sm text-text-dim">Cada botón borra solo ese módulo para todo el hogar. <strong>Las tareas creadas nunca se tocan</strong>, ni los miembros ni la configuración. Esta acción no se puede deshacer.</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                        { key: 'ranking', icon: Trophy, label: 'Ranking y Puntos', detail: 'Borra las tareas completadas y los puntos de todo el hogar.', confirm: '¿Resetear el ranking? Se borrarán los puntos y las tareas completadas de TODOS los miembros.', run: resetRanking },
+                        { key: 'shopping', icon: ShoppingCart, label: 'Lista de la Compra', detail: 'Vacía la lista de la compra actual.', confirm: '¿Vaciar la lista de la compra actual?', run: resetShoppingList },
+                        { key: 'shoppingDb', icon: Palette, label: 'Base de Datos de Alimentos', detail: 'Borra las sugerencias guardadas de alimentos.', confirm: '¿Borrar toda la base de datos de alimentos?', run: resetShoppingDatabase },
+                        { key: 'reminders', icon: Calendar, label: 'Recordatorios', detail: 'Borra todos los recordatorios de la agenda.', confirm: '¿Borrar todos los recordatorios del hogar?', run: resetReminders },
+                        { key: 'menus', icon: Utensils, label: 'Menús y Recetas', detail: 'Solo en este dispositivo — los menús aún no se comparten entre miembros.', confirm: '¿Borrar los menús y recetas guardados en este dispositivo?', run: resetMenus },
+                    ].map(({ key, icon: Icon, label, detail, confirm, run }) => (
+                        <button
+                            key={key}
+                            disabled={resettingModule === key}
+                            onClick={async () => {
+                                if (!window.confirm(confirm)) return;
+                                setResettingModule(key);
+                                try { await run(); }
+                                finally { setResettingModule(null); }
+                            }}
+                            className="text-left p-5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-start gap-4"
+                        >
+                            {resettingModule === key
+                                ? <Loader2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5 animate-spin" />
+                                : <Icon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />}
+                            <div>
+                                <p className="font-black text-sm text-foreground uppercase tracking-wide">{label}</p>
+                                <p className="text-xs text-text-dim mt-1">{detail}</p>
+                            </div>
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
     );
