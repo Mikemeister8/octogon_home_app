@@ -82,7 +82,14 @@ interface AppState {
     ) => Promise<void>;
 
     logout: () => Promise<void>;
-    resetAllData: () => Promise<void>;
+
+    // Reset by module — each clears one module's data for the active
+    // household, keeping tasks (and everything else) untouched.
+    resetRanking: () => Promise<void>;
+    resetShoppingList: () => Promise<void>;
+    resetShoppingDatabase: () => Promise<void>;
+    resetReminders: () => Promise<void>;
+    resetMenus: () => void;
 }
 
 export const AppContext = createContext<AppState | null>(null);
@@ -672,12 +679,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             hardReset();
         },
 
-        resetAllData: async () => {
+        // ── Reset by module ────────────────────────────────────────────────────
+        // Each of these clears one module's data for the active household only
+        // (never tasks — those stay) so a member can wipe e.g. just the ranking
+        // without touching the shopping list or the food database.
+        resetRanking: async () => {
             if (!homeSettings) return;
-            await supabase.from('task_completions').delete().neq('id', '');
-            await supabase.from('shopping_items').delete().eq('household_id', homeSettings.id);
-            setCompletions([]);
+            const { data: taskRows } = await supabase.from('tasks').select('id').eq('household_id', homeSettings.id);
+            const taskIds = (taskRows || []).map((t: any) => t.id);
+            if (taskIds.length > 0) {
+                const { error } = await supabase.from('task_completions').delete().in('task_id', taskIds);
+                if (error) { console.error('[resetRanking] failed:', error.message); return; }
+            }
+            setCompletions(prev => prev.filter(c => !taskIds.includes(c.task_id)));
+        },
+        resetShoppingList: async () => {
+            if (!homeSettings) return;
+            const { error } = await supabase.from('shopping_items').delete().eq('household_id', homeSettings.id);
+            if (error) { console.error('[resetShoppingList] failed:', error.message); return; }
             setShoppingItems([]);
+        },
+        resetShoppingDatabase: async () => {
+            if (!homeSettings) return;
+            const { error } = await supabase.from('shopping_database').delete().eq('household_id', homeSettings.id);
+            if (error) { console.error('[resetShoppingDatabase] failed:', error.message); return; }
+            setShoppingConcepts([]);
+        },
+        resetReminders: async () => {
+            if (!homeSettings) return;
+            const { error } = await supabase.from('reminders').delete().eq('household_id', homeSettings.id);
+            if (error) { console.error('[resetReminders] failed:', error.message); return; }
+            setReminders([]);
+        },
+        // Menus/recipes aren't synced to the household in Supabase yet — Meals.tsx
+        // keeps them in this browser's localStorage only — so this only clears
+        // them here, not for other members. Settings.tsx says so in the UI.
+        resetMenus: () => {
+            localStorage.removeItem('octo_menus');
+            localStorage.removeItem('octo_active_menu');
+            localStorage.removeItem('octo_recipes');
         },
 
     }), [currentUser, households, homeSettings, activeHouseholdId, users, tasks, completions,
