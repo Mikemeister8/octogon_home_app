@@ -51,7 +51,7 @@ interface AppState {
 
     // Shopping
     shoppingItems: ShoppingItem[];
-    addShoppingItem: (name: string, userId: string) => Promise<void>;
+    addShoppingItem: (name: string, userId: string, quantity?: number) => Promise<void>;
     updateShoppingItem: (si: ShoppingItem) => Promise<void>;
     deleteShoppingItem: (id: string) => Promise<void>;
 
@@ -627,10 +627,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
         // ── Shopping ───────────────────────────────────────────────────────────
-        addShoppingItem: async (name, userId) => {
+        addShoppingItem: async (name, userId, quantity = 1) => {
             if (!homeSettings) return;
             const { data, error } = await supabase.from('shopping_items')
-                .insert({ name, created_by: userId, household_id: homeSettings.id }).select().single();
+                .insert({ name, created_by: userId, household_id: homeSettings.id, quantity }).select().single();
             if (data && !error) setShoppingItems(prev => [...prev, data]);
             else if (error) console.error('[addShoppingItem] failed:', error.message);
         },
