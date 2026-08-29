@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { ShoppingCart, Plus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
 import type { ShoppingConcept, ShoppingItem } from '../types';
 
 export const Shopping = () => {
@@ -35,8 +35,7 @@ export const Shopping = () => {
             await addShoppingConcept(name.trim());
         }
 
-        const finalName = quantity > 1 ? `${quantity}x ${name.trim()}` : name.trim();
-        await addShoppingItem(finalName, currentUser.id);
+        await addShoppingItem(name.trim(), currentUser.id, quantity);
         setNewItem('');
         setQuantity(1);
         setSuggestions([]);
@@ -44,6 +43,12 @@ export const Shopping = () => {
 
     const toggleBought = async (item: ShoppingItem) => {
         await updateShoppingItem({ ...item, is_purchased: !item.is_purchased });
+    };
+
+    const changeQuantity = async (item: ShoppingItem, delta: number) => {
+        const next = Math.max(1, (item.quantity ?? 1) + delta);
+        if (next === item.quantity) return;
+        await updateShoppingItem({ ...item, quantity: next });
     };
 
     const activeItems = shoppingItems.filter(i => !i.is_purchased);
@@ -129,6 +134,24 @@ export const Shopping = () => {
                             </button>
                             <div className="flex-1 min-w-0 flex items-center gap-3">
                                 <span className="text-foreground font-black text-lg tracking-tight truncate block w-full">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-foreground/5 border border-foreground/10 rounded-xl shrink-0">
+                                <button
+                                    onClick={() => changeQuantity(item, -1)}
+                                    disabled={(item.quantity ?? 1) <= 1}
+                                    className="p-2 text-text-dim hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                                    aria-label="Menos unidades"
+                                >
+                                    <Minus className="w-4 h-4" />
+                                </button>
+                                <span className="w-6 text-center font-black text-sm text-foreground tabular-nums">{item.quantity ?? 1}</span>
+                                <button
+                                    onClick={() => changeQuantity(item, 1)}
+                                    className="p-2 text-text-dim hover:text-primary transition-colors"
+                                    aria-label="Más unidades"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
                             </div>
                             <button onClick={() => deleteShoppingItem(item.id)} className="p-3 text-text-dim hover:text-red-500 hover:bg-red-500/10 rounded-xl opacity-40 hover:opacity-100 transition-all shrink-0">
                                 <Trash2 className="w-5 h-5" />
