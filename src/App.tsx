@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils, Loader2 } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils, Loader2, RefreshCw } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -24,7 +24,7 @@ const ScrollToTop = () => {
 };
 
 const Sidebar = () => {
-  const { currentUser, homeSettings, logout, households, activeHouseholdId, switchHousehold } = useAppContext();
+  const { currentUser, homeSettings, logout, households, activeHouseholdId, switchHousehold, refreshData, refreshing } = useAppContext();
   const location = useLocation();
 
   if (!currentUser) return null;
@@ -101,6 +101,15 @@ const Sidebar = () => {
         </div>
 
         <button
+          onClick={() => refreshData()}
+          disabled={refreshing}
+          className="w-full flex items-center justify-center gap-3 p-4 mb-3 rounded-2xl bg-foreground/5 hover:bg-foreground/10 text-text-dim hover:text-foreground transition-all font-black text-xs uppercase tracking-widest group disabled:opacity-60"
+        >
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
+
+        <button
           onClick={logout}
           className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all font-black text-xs uppercase tracking-widest group"
         >
@@ -113,7 +122,7 @@ const Sidebar = () => {
 };
 
 const MobileNav = () => {
-  const { currentUser } = useAppContext();
+  const { currentUser, refreshData, refreshing } = useAppContext();
   const location = useLocation();
 
   if (!currentUser) return null;
@@ -150,6 +159,19 @@ const MobileNav = () => {
           <SettingsIcon className="w-5 h-5" />
           <span className={`text-[7px] font-black uppercase tracking-tighter mt-0.5 ${location.pathname === '/settings' ? 'opacity-100' : 'opacity-0'}`}>Ajustes</span>
         </Link>
+        {/* Manual refresh — re-fetches the active household's data in place,
+            no page reload. A native pull-to-refresh reloads the whole page
+            and has been reported to drop the session; this is the safe
+            alternative, available from every screen since MobileNav is. */}
+        <button
+          type="button"
+          onClick={() => refreshData()}
+          disabled={refreshing}
+          className="flex flex-col items-center justify-center flex-1 py-2 transition-colors text-text-dim/40 disabled:opacity-60"
+        >
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-primary' : ''}`} />
+          <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5 opacity-0">Actualizar</span>
+        </button>
       </div>
     </nav>
   );

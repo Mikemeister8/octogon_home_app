@@ -20,6 +20,12 @@ interface AppState {
     switchHousehold: (id: string) => Promise<void>;
     setHomeSettings: (s: HomeSettings) => void;
 
+    // Manual refresh (a "refresh" button, as opposed to a full page reload —
+    // pulling to refresh on mobile reloads the page and has been reported to
+    // drop the session; this re-fetches in place instead)
+    refreshing: boolean;
+    refreshData: () => Promise<void>;
+
     // Token
     tokenName: string;
     setTokenName: (name: string) => Promise<void>;
@@ -132,6 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>(() => JSON.parse(localStorage.getItem('octo_cache_concepts') || '[]'));
 
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
     const [setupError, setSetupError] = useState<string | null>(null);
 
@@ -482,6 +489,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             finally { setLoading(false); }
         },
 
+        refreshing,
+        refreshData: async () => {
+            if (!activeHouseholdId) return;
+            setRefreshing(true);
+            try { await loadHouseholdData(activeHouseholdId); }
+            finally { setRefreshing(false); }
+        },
+
         tokenName: homeSettings?.token_name || 'Puntos',
         setTokenName: async (name: string) => {
             if (!homeSettings) return;
@@ -666,7 +681,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
     }), [currentUser, households, homeSettings, activeHouseholdId, users, tasks, completions,
-        reminders, shoppingItems, weeklyMenus, shoppingConcepts, loading, needsProfileSetup, setupError]);
+        reminders, shoppingItems, weeklyMenus, shoppingConcepts, loading, refreshing, needsProfileSetup, setupError]);
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
