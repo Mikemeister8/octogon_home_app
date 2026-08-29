@@ -416,7 +416,10 @@ export const Auth = () => {
                     {/* ── LOGIN ────────────────────────────────────────────── */}
                     {screen === 'login' && (
                         <form onSubmit={handleLogin} className="relative z-10">
-                            <BackBtn to="welcome" />
+                            {/* Arrived here from an invite link/code ("Ya tengo cuenta" on the
+                                join_code screen) → back should return there, not to the generic
+                                welcome screen, or the invite context feels lost mid-flow. */}
+                            <BackBtn to={inviteCode ? 'join_code' : 'welcome'} />
                             <h2 className="text-2xl font-black mb-1">Iniciar sesión</h2>
                             <p className="text-text-dim text-sm mb-6">Bienvenido de vuelta.</p>
 
