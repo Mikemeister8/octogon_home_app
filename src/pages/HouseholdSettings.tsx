@@ -277,7 +277,7 @@ export const HouseholdSettings = () => {
                         { key: 'shopping', icon: ShoppingCart, label: 'Lista de la Compra', detail: 'Vacía la lista de la compra actual.', confirm: '¿Vaciar la lista de la compra actual?', run: resetShoppingList },
                         { key: 'shoppingDb', icon: Palette, label: 'Base de Datos de Alimentos', detail: 'Borra las sugerencias guardadas de alimentos.', confirm: '¿Borrar toda la base de datos de alimentos?', run: resetShoppingDatabase },
                         { key: 'reminders', icon: Calendar, label: 'Recordatorios', detail: 'Borra todos los recordatorios de la agenda.', confirm: '¿Borrar todos los recordatorios del hogar?', run: resetReminders },
-                        { key: 'menus', icon: Utensils, label: 'Menús y Recetas', detail: 'Solo en este dispositivo — los menús aún no se comparten entre miembros.', confirm: '¿Borrar los menús y recetas guardados en este dispositivo?', run: resetMenus },
+                        { key: 'menus', icon: Utensils, label: 'Menús y Recetas', detail: 'Borra todos los menús (activo y guardados) y el recetario de todo el hogar.', confirm: '¿Borrar todos los menús y el recetario de todo el hogar?', run: resetMenus },
                     ].map(({ key, icon: Icon, label, detail, confirm, run }) => (
                         <button
                             key={key}
