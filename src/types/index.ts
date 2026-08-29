@@ -63,32 +63,53 @@ export interface ShoppingItem {
     household_id: string;
     name: string;
     quantity: number;
+    unit: string;
     is_purchased: boolean;
     created_at: string;
     created_by?: string | null;
 }
 
+// Fixed set of units — a plain string column server-side, but a closed
+// dropdown client-side so "same ingredient, same unit" aggregation (menu ->
+// shopping list) can match on exact unit strings instead of free text like
+// "gramos" vs "gr" vs "g" never matching each other.
+export const SHOPPING_UNITS = ['ud', 'paquete', 'lata', 'g', 'kg', 'ml', 'l'] as const;
+export type ShoppingUnit = typeof SHOPPING_UNITS[number];
+
 export interface MealIngredient {
+    id?: string;
     name: string;
     quantity: number;
-    addToShopping: boolean;
+    unit: ShoppingUnit;
 }
 
 export interface MealBlock {
     id: string;
+    menu_id?: string;
+    day: string;
+    slot: string;
     title: string;
     description?: string;
     ingredients: MealIngredient[];
-    day?: string;
-    slot?: string;
 }
 
-export interface WeeklyMenu {
+// A named, reusable weekly menu shared by the whole household. Exactly one
+// per household can be 'active' (the one currently in use) — the rest are
+// 'saved' history that can be reactivated later.
+export interface Menu {
     id: string;
+    household_id: string;
     name: string;
-    isFavorite: boolean;
-    mealSlots: string[];
+    status: 'active' | 'saved';
     blocks: MealBlock[];
+}
+
+export interface Recipe {
+    id: string;
+    household_id: string;
+    title: string;
+    description?: string;
+    ingredients: MealIngredient[];
 }
 
 export interface ShoppingConcept {

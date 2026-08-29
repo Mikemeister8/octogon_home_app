@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type {
     Task, TaskCompletion, User, HomeSettings, Reminder,
-    ShoppingItem, WeeklyMenu, ShoppingConcept, AppTheme, PendingAction
+    ShoppingItem, Menu, MealBlock, MealIngredient, Recipe,
+    ShoppingConcept, AppTheme, PendingAction
 } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -51,15 +52,23 @@ interface AppState {
 
     // Shopping
     shoppingItems: ShoppingItem[];
-    addShoppingItem: (name: string, userId: string, quantity?: number) => Promise<void>;
+    addShoppingItem: (name: string, userId: string, quantity?: number, unit?: string) => Promise<void>;
     updateShoppingItem: (si: ShoppingItem) => Promise<void>;
     deleteShoppingItem: (id: string) => Promise<void>;
 
-    // Weekly menus
-    weeklyMenus: WeeklyMenu[];
-    addWeeklyMenu: (m: Partial<WeeklyMenu>) => Promise<void>;
-    updateWeeklyMenu: (m: WeeklyMenu) => Promise<void>;
-    deleteWeeklyMenu: (id: string) => Promise<void>;
+    // Menus — shared by the whole household. Exactly one is 'active' (menú
+    // en curso) at a time; the rest are 'saved' history you can reactivate.
+    menus: Menu[];
+    createMenu: (name: string) => Promise<string>;
+    activateMenu: (menuId: string) => Promise<void>;
+    deleteMenu: (menuId: string) => Promise<void>;
+    saveMenuBlock: (menuId: string, block: { day: string; slot: string; title: string; description?: string; ingredients: MealIngredient[] }) => Promise<void>;
+    deleteMenuBlock: (blockId: string) => Promise<void>;
+    exportMenuToShopping: (menuId: string) => Promise<void>;
+
+    // Recipe bank — also shared by the household.
+    recipes: Recipe[];
+    addRecipe: (title: string, description: string, ingredients: MealIngredient[]) => Promise<void>;
 
     // Shopping concepts
     shoppingConcepts: ShoppingConcept[];
@@ -89,7 +98,7 @@ interface AppState {
     resetShoppingList: () => Promise<void>;
     resetShoppingDatabase: () => Promise<void>;
     resetReminders: () => Promise<void>;
-    resetMenus: () => void;
+    resetMenus: () => Promise<void>;
 }
 
 export const AppContext = createContext<AppState | null>(null);
@@ -141,8 +150,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [completions, setCompletions] = useState<TaskCompletion[]>(() => JSON.parse(localStorage.getItem('octo_cache_comps') || '[]'));
     const [reminders, setReminders] = useState<Reminder[]>(() => JSON.parse(localStorage.getItem('octo_cache_rems') || '[]'));
     const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('octo_cache_shops') || '[]'));
-    const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenu[]>([]);
     const [shoppingConcepts, setShoppingConcepts] = useState<ShoppingConcept[]>(() => JSON.parse(localStorage.getItem('octo_cache_concepts') || '[]'));
+    const [menus, setMenus] = useState<Menu[]>(() => JSON.parse(localStorage.getItem('octo_cache_menus') || '[]'));
+    const [recipes, setRecipes] = useState<Recipe[]>(() => JSON.parse(localStorage.getItem('octo_cache_recipes') || '[]'));
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -159,6 +169,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => { localStorage.setItem('octo_cache_rems', JSON.stringify(reminders)); }, [reminders]);
     useEffect(() => { localStorage.setItem('octo_cache_shops', JSON.stringify(shoppingItems)); }, [shoppingItems]);
     useEffect(() => { localStorage.setItem('octo_cache_concepts', JSON.stringify(shoppingConcepts)); }, [shoppingConcepts]);
+    useEffect(() => { localStorage.setItem('octo_cache_menus', JSON.stringify(menus)); }, [menus]);
+    useEffect(() => { localStorage.setItem('octo_cache_recipes', JSON.stringify(recipes)); }, [recipes]);
 
     // ── Internal: load all data for a specific household ──────────────────────
     // Only two things here actually depend on each other: membersProfiles and
@@ -167,7 +179,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // needs householdId, which we already have — so they all fire in one round
     // trip instead of the five sequential ones this used to take.
     const loadHouseholdData = async (householdId: string) => {
-        const [hRes, invRes, membershipsRes, tasksRes, remsRes, shopsRes, dbRes] = await Promise.all([
+        const [hRes, invRes, membershipsRes, tasksRes, remsRes, shopsRes, dbRes, menusRes, recipesRes] = await Promise.all([
             supabase.from('households').select('*').eq('id', householdId).single(),
             supabase.from('invitations').select('code').eq('household_id', householdId)
                 .order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -176,6 +188,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             supabase.from('reminders').select('*').eq('household_id', householdId),
             supabase.from('shopping_items').select('*').eq('household_id', householdId),
             supabase.from('shopping_database').select('*').eq('household_id', householdId),
+            supabase.from('menus').select('*, menu_blocks(*, menu_ingredients(*))').eq('household_id', householdId),
+            supabase.from('recipes').select('*, recipe_ingredients(*)').eq('household_id', householdId),
         ]);
 
         if (hRes.data) {
@@ -193,6 +207,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (remsRes.data) setReminders(remsRes.data);
         if (shopsRes.data) setShoppingItems(shopsRes.data);
         if (dbRes.data) setShoppingConcepts(dbRes.data);
+
+        if (menusRes.data) {
+            setMenus(menusRes.data.map((m: any) => ({
+                id: m.id,
+                household_id: m.household_id,
+                name: m.name,
+                status: m.status,
+                blocks: (m.menu_blocks || []).map((b: any) => ({
+                    id: b.id,
+                    menu_id: b.menu_id,
+                    day: b.day,
+                    slot: b.slot,
+                    title: b.title,
+                    description: b.description,
+                    ingredients: (b.menu_ingredients || []).map((i: any) => ({
+                        id: i.id, name: i.name, quantity: i.quantity, unit: i.unit,
+                    })),
+                })),
+            })));
+        }
+        if (recipesRes.data) {
+            setRecipes(recipesRes.data.map((r: any) => ({
+                id: r.id,
+                household_id: r.household_id,
+                title: r.title,
+                description: r.description,
+                ingredients: (r.recipe_ingredients || []).map((i: any) => ({
+                    id: i.id, name: i.name, quantity: i.quantity, unit: i.unit,
+                })),
+            })));
+        }
 
         const memberIds = (membershipsRes.data || []).map((m: any) => m.user_id);
 
@@ -511,7 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setHomeSettings({ ...homeSettings, token_name: name });
         },
 
-        users, tasks, completions, reminders, shoppingItems, weeklyMenus, shoppingConcepts,
+        users, tasks, completions, reminders, shoppingItems, menus, recipes, shoppingConcepts,
         loading, needsProfileSetup, setupError,
 
         retrySetup: async () => {
@@ -627,10 +672,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
         // ── Shopping ───────────────────────────────────────────────────────────
-        addShoppingItem: async (name, userId, quantity = 1) => {
+        addShoppingItem: async (name, userId, quantity = 1, unit = 'ud') => {
             if (!homeSettings) return;
             const { data, error } = await supabase.from('shopping_items')
-                .insert({ name, created_by: userId, household_id: homeSettings.id, quantity }).select().single();
+                .insert({ name, created_by: userId, household_id: homeSettings.id, quantity, unit }).select().single();
             if (data && !error) setShoppingItems(prev => [...prev, data]);
             else if (error) console.error('[addShoppingItem] failed:', error.message);
         },
@@ -645,10 +690,126 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setShoppingItems(prev => prev.filter(x => x.id !== id));
         },
 
-        // ── Weekly menus ───────────────────────────────────────────────────────
-        addWeeklyMenu: async (m) => { setWeeklyMenus(p => [...p, m as WeeklyMenu]); },
-        updateWeeklyMenu: async (m) => { setWeeklyMenus(p => p.map(x => x.id === m.id ? m : x)); },
-        deleteWeeklyMenu: async (id) => { setWeeklyMenus(p => p.filter(x => x.id !== id)); },
+        // ── Menus ──────────────────────────────────────────────────────────────
+        createMenu: async (name) => {
+            if (!homeSettings) throw new Error('Sin hogar activo');
+            // Only one menu can be 'active' per household (DB partial unique
+            // index enforces it) — demote the current one first or the insert
+            // below is rejected.
+            const currentActive = menus.find(m => m.status === 'active');
+            if (currentActive) {
+                await supabase.from('menus').update({ status: 'saved' }).eq('id', currentActive.id);
+            }
+            const { data, error } = await supabase.from('menus')
+                .insert({ household_id: homeSettings.id, name, status: 'active' }).select().single();
+            if (error || !data) throw new Error(error?.message || 'No se pudo crear el menú');
+            setMenus(prev => [
+                ...prev.map(m => m.status === 'active' ? { ...m, status: 'saved' as const } : m),
+                { id: data.id, household_id: data.household_id, name: data.name, status: 'active', blocks: [] },
+            ]);
+            return data.id as string;
+        },
+        activateMenu: async (menuId) => {
+            const currentActive = menus.find(m => m.status === 'active' && m.id !== menuId);
+            if (currentActive) {
+                const { error } = await supabase.from('menus').update({ status: 'saved' }).eq('id', currentActive.id);
+                if (error) { console.error('[activateMenu] failed to demote previous active:', error.message); return; }
+            }
+            const { error } = await supabase.from('menus').update({ status: 'active' }).eq('id', menuId);
+            if (error) { console.error('[activateMenu] failed:', error.message); return; }
+            setMenus(prev => prev.map(m => ({
+                ...m,
+                status: m.id === menuId ? 'active' : (m.status === 'active' ? 'saved' : m.status),
+            })));
+        },
+        deleteMenu: async (menuId) => {
+            const { error } = await supabase.from('menus').delete().eq('id', menuId);
+            if (error) { console.error('[deleteMenu] failed:', error.message); return; }
+            setMenus(prev => prev.filter(m => m.id !== menuId));
+        },
+        // Upserts on (menu_id, day, slot) and replaces that block's ingredients
+        // wholesale — simpler and just as correct as diffing a handful of rows.
+        saveMenuBlock: async (menuId, block) => {
+            const { data: blockData, error: blockErr } = await supabase.from('menu_blocks')
+                .upsert(
+                    { menu_id: menuId, day: block.day, slot: block.slot, title: block.title, description: block.description || null },
+                    { onConflict: 'menu_id,day,slot' }
+                ).select().single();
+            if (blockErr || !blockData) { console.error('[saveMenuBlock] failed:', blockErr?.message); return; }
+
+            await supabase.from('menu_ingredients').delete().eq('block_id', blockData.id);
+            let ingredientRows: any[] = [];
+            if (block.ingredients.length > 0) {
+                const { data: insData, error: insErr } = await supabase.from('menu_ingredients')
+                    .insert(block.ingredients.map(i => ({ block_id: blockData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
+                    .select();
+                if (insErr) { console.error('[saveMenuBlock] ingredients failed:', insErr.message); return; }
+                ingredientRows = insData || [];
+            }
+
+            const newBlock: MealBlock = {
+                id: blockData.id, menu_id: blockData.menu_id, day: blockData.day, slot: blockData.slot,
+                title: blockData.title, description: blockData.description,
+                ingredients: ingredientRows.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit })),
+            };
+            setMenus(prev => prev.map(m => m.id !== menuId ? m : {
+                ...m,
+                blocks: [...m.blocks.filter(b => !(b.day === block.day && b.slot === block.slot)), newBlock],
+            }));
+        },
+        deleteMenuBlock: async (blockId) => {
+            const { error } = await supabase.from('menu_blocks').delete().eq('id', blockId);
+            if (error) { console.error('[deleteMenuBlock] failed:', error.message); return; }
+            setMenus(prev => prev.map(m => ({ ...m, blocks: m.blocks.filter(b => b.id !== blockId) })));
+        },
+        // Same ingredient name + same unit -> one summed row (2 latas + 1 lata
+        // -> 3 latas); same name but a different unit stays a separate row
+        // (3 latas de atún and 200 g de atún don't merge).
+        exportMenuToShopping: async (menuId) => {
+            if (!homeSettings || !currentUser) return;
+            const menu = menus.find(m => m.id === menuId);
+            if (!menu) return;
+            const allIngredients = menu.blocks.flatMap(b => b.ingredients);
+            const groups = new Map<string, { name: string; unit: string; quantity: number }>();
+            allIngredients.forEach(ing => {
+                const key = `${ing.name.trim().toLowerCase()}__${ing.unit}`;
+                const g = groups.get(key);
+                if (g) g.quantity += Number(ing.quantity);
+                else groups.set(key, { name: ing.name.trim(), unit: ing.unit, quantity: Number(ing.quantity) });
+            });
+            const rows = Array.from(groups.values()).map(({ name, unit, quantity }) => ({
+                name: name.charAt(0).toUpperCase() + name.slice(1),
+                quantity, unit,
+                created_by: currentUser.id,
+                household_id: homeSettings.id,
+            }));
+            if (rows.length === 0) return;
+            const { data, error } = await supabase.from('shopping_items').insert(rows).select();
+            if (error) { console.error('[exportMenuToShopping] failed:', error.message); return; }
+            if (data) setShoppingItems(prev => [...prev, ...data]);
+        },
+
+        // ── Recipe bank ────────────────────────────────────────────────────────
+        addRecipe: async (title, description, ingredients) => {
+            if (!homeSettings) return;
+            const { data: recipeData, error: recipeErr } = await supabase.from('recipes')
+                .insert({ household_id: homeSettings.id, title, description: description || null }).select().single();
+            if (recipeErr || !recipeData) { console.error('[addRecipe] failed:', recipeErr?.message); return; }
+
+            let ingredientRows: any[] = [];
+            if (ingredients.length > 0) {
+                const { data: insData, error: insErr } = await supabase.from('recipe_ingredients')
+                    .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
+                    .select();
+                if (insErr) { console.error('[addRecipe] ingredients failed:', insErr.message); return; }
+                ingredientRows = insData || [];
+            }
+
+            setRecipes(prev => [...prev, {
+                id: recipeData.id, household_id: recipeData.household_id, title: recipeData.title, description: recipeData.description,
+                ingredients: ingredientRows.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit })),
+            }]);
+        },
 
         // ── Shopping concepts ──────────────────────────────────────────────────
         addShoppingConcept: async (name) => {
@@ -714,14 +875,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Menus/recipes aren't synced to the household in Supabase yet — Meals.tsx
         // keeps them in this browser's localStorage only — so this only clears
         // them here, not for other members. Settings.tsx says so in the UI.
-        resetMenus: () => {
-            localStorage.removeItem('octo_menus');
-            localStorage.removeItem('octo_active_menu');
-            localStorage.removeItem('octo_recipes');
+        // Menus/recipes are now real household data (Supabase, cascade-deletes
+        // blocks/ingredients along with their parent row) — not a per-device
+        // localStorage cache like before.
+        resetMenus: async () => {
+            if (!homeSettings) return;
+            const { error: menusErr } = await supabase.from('menus').delete().eq('household_id', homeSettings.id);
+            if (menusErr) { console.error('[resetMenus] menus failed:', menusErr.message); return; }
+            const { error: recipesErr } = await supabase.from('recipes').delete().eq('household_id', homeSettings.id);
+            if (recipesErr) { console.error('[resetMenus] recipes failed:', recipesErr.message); return; }
+            setMenus([]);
+            setRecipes([]);
         },
 
     }), [currentUser, households, homeSettings, activeHouseholdId, users, tasks, completions,
-        reminders, shoppingItems, weeklyMenus, shoppingConcepts, loading, refreshing, needsProfileSetup, setupError]);
+        reminders, shoppingItems, menus, recipes, shoppingConcepts, loading, refreshing, needsProfileSetup, setupError]);
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

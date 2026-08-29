@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
-import type { ShoppingConcept, ShoppingItem } from '../types';
+import type { ShoppingConcept, ShoppingItem, ShoppingUnit } from '../types';
+import { SHOPPING_UNITS } from '../types';
 
 export const Shopping = () => {
     const {
@@ -10,6 +11,7 @@ export const Shopping = () => {
     } = useAppContext();
     const [newItem, setNewItem] = useState('');
     const [quantity, setQuantity] = useState(1);
+    const [unit, setUnit] = useState<ShoppingUnit>('ud');
     const [suggestions, setSuggestions] = useState<ShoppingConcept[]>([]);
 
     if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
@@ -35,9 +37,10 @@ export const Shopping = () => {
             await addShoppingConcept(name.trim());
         }
 
-        await addShoppingItem(name.trim(), currentUser.id, quantity);
+        await addShoppingItem(name.trim(), currentUser.id, quantity, unit);
         setNewItem('');
         setQuantity(1);
+        setUnit('ud');
         setSuggestions([]);
     };
 
@@ -76,8 +79,15 @@ export const Shopping = () => {
                             min="1"
                             value={quantity}
                             onChange={e => setQuantity(Number(e.target.value))}
-                            className="w-20 bg-panel border border-foreground/10 rounded-2xl py-3 sm:py-4 px-3 text-base sm:text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
+                            className="w-16 bg-panel border border-foreground/10 rounded-2xl py-3 sm:py-4 px-3 text-base sm:text-lg font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
                         />
+                        <select
+                            value={unit}
+                            onChange={e => setUnit(e.target.value as ShoppingUnit)}
+                            className="bg-panel border border-foreground/10 rounded-2xl py-3 sm:py-4 px-2 text-sm sm:text-base font-bold text-foreground focus:outline-none focus:border-primary shadow-sm"
+                        >
+                            {SHOPPING_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
                         <button type="submit" disabled={!newItem.trim()} className="sm:hidden px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl transition-all shadow-sm active:scale-95 disabled:opacity-30 flex items-center justify-center grow">
                             Añadir
                         </button>
@@ -144,7 +154,7 @@ export const Shopping = () => {
                                 >
                                     <Minus className="w-4 h-4" />
                                 </button>
-                                <span className="w-6 text-center font-black text-sm text-foreground tabular-nums">{item.quantity ?? 1}</span>
+                                <span className="min-w-[3rem] text-center font-black text-sm text-foreground tabular-nums">{item.quantity ?? 1} {item.unit || 'ud'}</span>
                                 <button
                                     onClick={() => changeQuantity(item, 1)}
                                     className="p-2 text-text-dim hover:text-primary transition-colors"
