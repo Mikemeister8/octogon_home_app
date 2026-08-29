@@ -5,11 +5,14 @@ import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
 import { Reminders } from './pages/Reminders';
 import { Shopping } from './pages/Shopping';
-import { Settings } from './pages/Settings';
+import { SettingsHub } from './pages/SettingsHub';
+import { ProfileSettings } from './pages/ProfileSettings';
+import { HouseholdSettings } from './pages/HouseholdSettings';
 import { Dashboards } from './pages/Dashboards';
 import { Auth } from './pages/Auth';
 import { CompleteSetup } from './pages/CompleteSetup';
 import { JoinHousehold } from './pages/JoinHousehold';
+import { ResetPassword } from './pages/ResetPassword';
 import { Meals } from './pages/Meals';
 import { useAppContext } from './store/AppContext';
 import { getIcon } from './utils/icons';
@@ -212,6 +215,15 @@ const AppContent = () => {
     return () => clearTimeout(t);
   }, [hasLoadedOnce]);
 
+  // Password-recovery links land here with no session yet (Supabase parses
+  // the token from the URL hash asynchronously) — none of the currentUser/
+  // loading-based gates below apply until that resolves, so this bypasses
+  // all of them and lets the page manage its own state. Placed after every
+  // hook above so hook call order stays identical across renders.
+  if (location.pathname === '/reset-password') {
+    return <ResetPassword />;
+  }
+
   if (currentUser && loading && !hasLoadedOnce && !location.pathname.startsWith('/join')) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -271,7 +283,9 @@ const AppContent = () => {
           <Route path="/shopping" element={<Shopping />} />
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/meals" element={<Meals />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<SettingsHub />} />
+          <Route path="/settings/profile" element={<ProfileSettings />} />
+          <Route path="/settings/household" element={<HouseholdSettings />} />
           <Route path="/auth" element={<Navigate to="/" replace />} />
           <Route path="/join/:inviteId" element={<JoinHousehold />} />
         </Routes>
