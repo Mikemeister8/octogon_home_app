@@ -61,7 +61,7 @@ export const Competition = () => {
             {rankings.map((item, idx) => (
                 <div key={item.user.id} className={`bg-panel border border-foreground/10 rounded-[2rem] p-5 flex items-center gap-5 hover:translate-x-2 transition-all group shadow-xl ${idx === 0 ? 'border-yellow-500/30' : ''}`}>
                     <div className={`w-10 text-2xl font-black flex items-center justify-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-text-dim'}`}>
-                        {idx === 0 ? <Medal className="w-7 h-7" /> : idx === 1 ? <Medal className="w-6 h-6" /> : `#${idx + 1}`}
+                        {idx === 0 ? <Medal className="w-7 h-7" /> : idx === 1 ? <Medal className="w-6 h-6" /> : idx === 2 ? <Medal className="w-6 h-6" /> : `#${idx + 1}`}
                     </div>
                     <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: item.user.color_hex }}>
                         {item.user.full_name[0]}
