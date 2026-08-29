@@ -13,7 +13,8 @@ type Screen =
     | 'join_code'
     | 'join_account'
     | 'login'
-    | 'verify_email';
+    | 'verify_email'
+    | 'forgot_password';
 
 export const Auth = () => {
     const [screen, setScreen] = useState<Screen>(() => {
@@ -38,6 +39,10 @@ export const Auth = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Forgot-password specific
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotSent, setForgotSent] = useState(false);
 
     // Auto-validate if arriving from invite link
     useEffect(() => {
@@ -143,6 +148,25 @@ export const Auth = () => {
         try {
             const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
             if (authErr) throw authErr;
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── Forgot password ─────────────────────────────────────────────────────
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forgotEmail.trim()) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const { error: authErr } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+                redirectTo: `${window.location.origin}/reset-password`,
+            });
+            if (authErr) throw authErr;
+            setForgotSent(true);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -453,8 +477,55 @@ export const Auth = () => {
                                 <button disabled={loading} className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
                                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><ArrowRight className="w-5 h-5" /> Entrar</>}
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setForgotEmail(email); setForgotSent(false); setError(null); setScreen('forgot_password'); }}
+                                    className="w-full text-center text-xs text-text-dim hover:text-primary transition-colors pt-1"
+                                >
+                                    ¿Olvidaste tu contraseña?
+                                </button>
                             </div>
                         </form>
+                    )}
+
+                    {/* ── FORGOT PASSWORD ──────────────────────────────────── */}
+                    {screen === 'forgot_password' && (
+                        <div className="relative z-10">
+                            <BackBtn to="login" />
+                            <h2 className="text-2xl font-black mb-1">Recuperar contraseña</h2>
+                            <p className="text-text-dim text-sm mb-6">Te enviaremos un enlace a tu correo para elegir una nueva.</p>
+
+                            {forgotSent ? (
+                                <div className="text-center space-y-6 py-4">
+                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                                        <Mail className="w-8 h-8 text-primary" />
+                                    </div>
+                                    <p className="text-sm text-text-dim">
+                                        Si <span className="text-primary font-bold">{forgotEmail}</span> tiene una cuenta, te llegará un correo con el enlace en unos minutos. Revisa también la carpeta de Spam.
+                                    </p>
+                                    <button
+                                        onClick={() => setScreen('login')}
+                                        className="w-full py-4 bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-foreground rounded-2xl font-bold transition-all"
+                                    >
+                                        Volver a Iniciar sesión
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleForgotPassword} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className={labelClass}>Email</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
+                                            <input required type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                                                className={`${inputClass} pl-12`} placeholder="correo@ejemplo.com" />
+                                        </div>
+                                    </div>
+                                    <button disabled={loading || !forgotEmail.trim()} className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
+                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Mail className="w-5 h-5" /> Enviar enlace</>}
+                                    </button>
+                                </form>
+                            )}
+                        </div>
                     )}
 
                     {/* ── VERIFY EMAIL ─────────────────────────────────────── */}
