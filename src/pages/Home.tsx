@@ -1,8 +1,7 @@
 import { useAppContext } from '../store/AppContext';
 import { calculateRankings } from '../utils/ranking';
-import { Award, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, Sparkles, Loader2, Users, Share2 } from 'lucide-react';
+import { Award, Trophy, CheckCircle2, Flame, ArrowRight, CalendarDays, Sparkles, Loader2, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getIcon } from '../utils/icons';
 
 const PodioMini = ({ top1, top2 }: { top1?: { user: { color_hex: string, full_name: string }, points: number }, top2?: { user: { color_hex: string, full_name: string }, points: number } }) => (
     <div className="flex items-end justify-center gap-4 h-32 sm:h-40 my-6">
@@ -47,50 +46,28 @@ export const Home = () => {
     const top2 = currentRankings[1];
     const isFirst = currentUser && top1 && top1.user.id === currentUser.id;
 
-    const HomeIconComponent = getIcon(homeSettings.logo || 'Home');
-
-    // Activity feed: recent completions sorted by date (newest first)
+    // Activity feed: recent completions from every household member, sorted
+    // by date (newest first) — not just the current user's own.
     const recentCompletions = [...completions]
         .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
         .slice(0, 8);
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 pb-20">
-            {/* Header: Solo el nombre del hogar, sin duplicar "Octogon" */}
-            <div className="flex items-center justify-between gap-4 px-4 py-3 bg-foreground/5 rounded-3xl border border-foreground/10">
-                <div className="flex items-center gap-4 group">
-                    <div className="p-2 bg-panel rounded-2xl shadow-lg border border-foreground/10 group-hover:rotate-12 transition-transform shrink-0">
-                        <img src="/logo.png" alt="Octogon" className="w-8 h-8 object-contain" />
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-primary/10 shrink-0">
-                            <HomeIconComponent className="w-5 h-5" style={{ color: homeSettings.themeColor }} />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-black tracking-tight leading-none truncate max-w-[180px]" style={{ color: homeSettings.themeColor }}>{homeSettings.name}</h1>
-                            <span className="text-[10px] font-bold text-text-dim flex items-center gap-1 mt-1 uppercase tracking-widest opacity-50">
-                                <Users className="w-3 h-3" />
-                                {users.length} Miembros
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Link 
-                        to="/settings" 
-                        className="p-3 bg-accent/20 hover:bg-accent text-accent hover:text-white rounded-2xl transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-widest group/invite shadow-lg shadow-accent/10"
-                    >
-                        <Share2 className="w-4 h-4 group-hover/invite:scale-110 transition-transform" />
-                        <span className="hidden xs:block">Invitar</span>
-                    </Link>
-                    <div className="text-right hidden sm:block ml-4">
-                        <span className="text-[8px] font-black text-text-dim uppercase tracking-[0.3em] opacity-30">OCTOGON HOME APP</span>
-                    </div>
+        <div className="p-4 sm:p-8 space-y-6 pb-20">
+            {/* Header: big logo + household name, nothing competing for attention */}
+            <div className="flex items-center gap-5 px-6 py-5 bg-foreground/5 rounded-3xl border border-foreground/10">
+                <img src="/logo.png" alt="Octogon" className="w-14 h-14 sm:w-16 sm:h-16 object-contain shrink-0" />
+                <div className="min-w-0">
+                    <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-none truncate" style={{ color: homeSettings.themeColor }}>{homeSettings.name}</h1>
+                    <span className="text-[10px] font-bold text-text-dim flex items-center gap-1.5 mt-2 uppercase tracking-widest opacity-50">
+                        <Users className="w-3 h-3" />
+                        {users.length} {users.length === 1 ? 'Miembro' : 'Miembros'}
+                    </span>
                 </div>
             </div>
 
             {/* Ranking Card */}
-            <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-6 sm:p-10 shadow-md relative overflow-hidden">
+            <div className="bg-panel border border-foreground/10 rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
                     <div className="flex-1 text-center lg:text-left space-y-4">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-bold uppercase tracking-wide">
@@ -123,28 +100,31 @@ export const Home = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Activity Feed */}
-                <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl">
-                    <h3 className="text-xl font-black text-foreground tracking-tight uppercase italic mb-6 flex items-center gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Activity Feed — every household member's completions, not just yours */}
+                <div className="bg-panel border border-foreground/10 rounded-3xl p-6 shadow-xl">
+                    <h3 className="text-lg font-black text-foreground tracking-tight uppercase italic mb-4 flex items-center gap-3">
                         <CheckCircle2 className="w-5 h-5 text-primary" />
                         Actividad Reciente
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                         {recentCompletions.length > 0 ? recentCompletions.map(c => {
                             const user = users.find(u => u.id === c.user_id);
                             const task = tasks.find(t => t.id === c.task_id);
-                            if (!user || !task) return null;
+                            // Show it even if the user/task lookup momentarily misses
+                            // (e.g. a just-joined member whose profile hasn't finished
+                            // loading yet) instead of silently dropping the row — that
+                            // used to look exactly like "only my own activity shows up".
                             const date = new Date(c.completed_at);
                             const isToday = date.toDateString() === today.toDateString();
                             return (
                                 <div key={c.id} className="flex items-center gap-3 p-3 bg-foreground/5 rounded-2xl border border-foreground/5 group hover:bg-foreground/10 transition-all">
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow" style={{ backgroundColor: user.color_hex }}>
-                                        {user.full_name[0]}
+                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow" style={{ backgroundColor: user?.color_hex || '#666' }}>
+                                        {user?.full_name?.[0] || '?'}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-black text-foreground truncate">
-                                            <span style={{ color: user.color_hex }}>{user.full_name}</span> completó <span className="italic">{task.title}</span>
+                                            <span style={{ color: user?.color_hex }}>{user?.full_name || 'Alguien'}</span> completó <span className="italic">{task?.title || 'una tarea'}</span>
                                         </p>
                                         <p className="text-[10px] text-text-dim font-bold opacity-60">
                                             {isToday ? 'Hoy' : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} • +{c.points_earned} {tokenName}
@@ -160,14 +140,14 @@ export const Home = () => {
                 </div>
 
                 {/* Agenda Rápida */}
-                <div className="bg-panel border border-foreground/10 rounded-[2.5rem] p-8 shadow-xl">
-                    <h3 className="text-xl font-black text-foreground tracking-tight uppercase italic mb-6 flex items-center gap-3">
+                <div className="bg-panel border border-foreground/10 rounded-3xl p-6 shadow-xl">
+                    <h3 className="text-lg font-black text-foreground tracking-tight uppercase italic mb-4 flex items-center gap-3">
                         <CalendarDays className="w-5 h-5 text-primary" />
                         Agenda Próxima
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {reminders.slice(0, 3).map(r => (
-                            <div key={r.id} className="flex items-center gap-4 p-4 bg-foreground/5 rounded-2xl border border-foreground/5 group hover:bg-foreground/10 transition-all">
+                            <div key={r.id} className="flex items-center gap-4 p-3 bg-foreground/5 rounded-2xl border border-foreground/5 group hover:bg-foreground/10 transition-all">
                                 <div className="w-10 h-10 bg-primary/10 rounded-xl flex flex-col items-center justify-center shrink-0 border border-primary/10">
                                     <span className="text-[10px] font-black text-primary leading-none">{new Date(r.due_date).getDate()}</span>
                                     <span className="text-[8px] font-bold text-primary/60 uppercase">{new Date(r.due_date).toLocaleString('es-ES', { month: 'short' })}</span>
