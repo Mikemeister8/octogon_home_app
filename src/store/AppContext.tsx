@@ -466,18 +466,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         let handled = false;
 
         const checkSession = async () => {
+            // This runs on every fresh page load/refresh, unprotected until
+            // now — a wedged auth mutex here (see withTimeout's comment
+            // above) left the user staring at the loading spinner
+            // indefinitely, which looked exactly like "refreshing hangs and
+            // kicks me out." retrySetup already races the same kind of call
+            // against a timeout for its manual "Reintentar" button; this
+            // gives the automatic initial load the same escape hatch instead
+            // of only offering it after the user notices something's wrong.
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
+                const { data: { session }, error } = await withTimeout(supabase.auth.getSession());
                 if (error) throw error;
                 if (session?.user) {
                     handled = true;
-                    await fetchUserData(session.user.id);
+                    await withTimeout(fetchUserData(session.user.id), 10000);
                 } else {
                     setLoading(false);
                 }
             } catch (err) {
-                console.error('[AUTH] getSession error:', err);
-                setLoading(false);
+                console.error('[AUTH] checkSession stuck, forcing a hard reload:', err);
+                hardReset();
             }
         };
         checkSession();
