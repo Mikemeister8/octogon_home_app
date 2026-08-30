@@ -5,7 +5,7 @@ import {
     ArrowLeft, BookOpen, Star, CheckCircle2, PlayCircle,
 } from 'lucide-react';
 import type { MealIngredient, Recipe, ShoppingConcept } from '../types';
-import { SHOPPING_UNITS, type ShoppingUnit } from '../types';
+import { SHOPPING_UNITS } from '../types';
 
 const defaultDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const defaultSlots = ['Desayuno', 'Media Mañana', 'Comida', 'Merienda', 'Cena'];
@@ -32,11 +32,12 @@ export const Meals = () => {
     const [editIngredients, setEditIngredients] = useState<MealIngredient[]>([]);
     const [ingredientQuery, setIngredientQuery] = useState('');
     const [ingredientQty, setIngredientQty] = useState(1);
-    const [ingredientUnit, setIngredientUnit] = useState<ShoppingUnit>('ud');
+    const [ingredientUnit, setIngredientUnit] = useState<string>('ud');
     const [ingredientSuggestions, setIngredientSuggestions] = useState<ShoppingConcept[]>([]);
     const [showRecipeBank, setShowRecipeBank] = useState(false);
     const [savingBlock, setSavingBlock] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [savingRecipe, setSavingRecipe] = useState(false);
 
     if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
@@ -220,16 +221,30 @@ export const Meals = () => {
         }
     };
 
-    const addIngredient = async (name: string) => {
+    const addIngredient = async (name: string, unitOverride?: string) => {
         if (!name.trim()) return;
         const exists = shoppingConcepts.some(c => c.name.toLowerCase() === name.toLowerCase());
         if (!exists) await addShoppingConcept(name.trim());
 
-        setEditIngredients(prev => [...prev, { name: name.trim(), quantity: ingredientQty, unit: ingredientUnit }]);
+        setEditIngredients(prev => [...prev, { name: name.trim(), quantity: ingredientQty, unit: unitOverride || ingredientUnit }]);
         setIngredientQuery('');
         setIngredientQty(1);
         setIngredientSuggestions([]);
     };
+
+    // Picking a suggestion for a food that has a defined package sub-unit
+    // (e.g. jamón -> lonchas) switches the unit picker to it, so the user
+    // doesn't have to remember and re-select it every time.
+    const pickSuggestion = (concept: ShoppingConcept) => {
+        if (concept.pack_unit) setIngredientUnit(concept.pack_unit);
+        addIngredient(concept.name, concept.pack_unit || undefined);
+    };
+
+    // Custom sub-units defined across the food database (e.g. "lonchas"),
+    // offered in the unit picker alongside the fixed SHOPPING_UNITS.
+    const customUnits = Array.from(new Set(
+        shoppingConcepts.filter(c => c.pack_unit).map(c => c.pack_unit as string)
+    ));
 
     const handleExport = async () => {
         setExporting(true);
@@ -242,9 +257,16 @@ export const Meals = () => {
     };
 
     const handleSaveToRecipes = async () => {
-        if (!editTitle.trim()) return;
-        await addRecipe(editTitle.trim(), editDescription, editIngredients);
-        alert('¡Receta guardada en tu recetario para usarla en el futuro!');
+        if (!editTitle.trim() || savingRecipe) return;
+        setSavingRecipe(true);
+        try {
+            await addRecipe(editTitle.trim(), editDescription, editIngredients);
+            alert('¡Receta guardada en tu recetario para usarla en el futuro!');
+        } catch (err: any) {
+            alert(err.message || 'No se pudo guardar la receta. Inténtalo de nuevo.');
+        } finally {
+            setSavingRecipe(false);
+        }
     };
 
     const loadRecipe = (r: Recipe) => {
@@ -354,8 +376,8 @@ export const Meals = () => {
                                     <label className="text-xs font-bold text-text-dim uppercase tracking-widest flex justify-between">
                                         Nombre del Plato
                                         {editTitle.trim() && (
-                                            <button onClick={handleSaveToRecipes} className="text-primary hover:text-primary/70 flex items-center gap-1 text-[10px]">
-                                                <Star className="w-3 h-3" /> Guardar como Receta
+                                            <button onClick={handleSaveToRecipes} disabled={savingRecipe} className="text-primary hover:text-primary/70 flex items-center gap-1 text-[10px] disabled:opacity-50">
+                                                {savingRecipe ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />} Guardar como Receta
                                             </button>
                                         )}
                                     </label>
@@ -411,10 +433,15 @@ export const Meals = () => {
                                             />
                                             <select
                                                 value={ingredientUnit}
-                                                onChange={e => setIngredientUnit(e.target.value as ShoppingUnit)}
+                                                onChange={e => setIngredientUnit(e.target.value)}
                                                 className="bg-foreground/5 border border-foreground/10 rounded-xl px-2 py-2 text-foreground font-bold focus:outline-none focus:border-primary"
                                             >
                                                 {SHOPPING_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                                {customUnits.length > 0 && (
+                                                    <optgroup label="Personalizadas">
+                                                        {customUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </optgroup>
+                                                )}
                                             </select>
                                             <input
                                                 type="text"
@@ -442,10 +469,11 @@ export const Meals = () => {
                                                 {ingredientSuggestions.map(s => (
                                                     <button
                                                         key={s.id}
-                                                        onClick={() => addIngredient(s.name)}
-                                                        className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-primary hover:text-white transition-colors"
+                                                        onClick={() => pickSuggestion(s)}
+                                                        className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-primary hover:text-white transition-colors flex items-center justify-between gap-2"
                                                     >
-                                                        {s.name}
+                                                        <span>{s.name}</span>
+                                                        {s.pack_unit && <span className="text-[9px] opacity-60 uppercase tracking-widest shrink-0">en {s.pack_unit}</span>}
                                                     </button>
                                                 ))}
                                             </div>

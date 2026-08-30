@@ -11,7 +11,7 @@ export const HouseholdSettings = () => {
     const {
         tokenName, setTokenName,
         currentUser, homeSettings, setHomeSettings,
-        shoppingConcepts, addShoppingConcept, deleteShoppingConcept,
+        shoppingConcepts, addShoppingConcept, deleteShoppingConcept, updateShoppingConcept,
         resetRanking, resetShoppingList, resetShoppingDatabase, resetReminders, resetMenus,
         users,
     } = useAppContext();
@@ -21,6 +21,10 @@ export const HouseholdSettings = () => {
     const [homeLogo, setHomeLogo] = useState<string>(homeSettings?.logo || 'Home');
     const [homeColor, setHomeColor] = useState(homeSettings?.themeColor || '#00FF88');
     const [newConcept, setNewConcept] = useState('');
+    const [editingPackId, setEditingPackId] = useState<string | null>(null);
+    const [packSize, setPackSize] = useState('');
+    const [packUnit, setPackUnit] = useState('');
+    const [savingPack, setSavingPack] = useState(false);
 
     const [savedSection, setSavedSection] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -64,6 +68,38 @@ export const HouseholdSettings = () => {
         if (!newConcept.trim()) return;
         await addShoppingConcept(newConcept.trim());
         setNewConcept('');
+    };
+
+    const startEditPack = (concept: { id: string; pack_size?: number | null; pack_unit?: string | null }) => {
+        setEditingPackId(concept.id);
+        setPackSize(concept.pack_size ? String(concept.pack_size) : '');
+        setPackUnit(concept.pack_unit || '');
+    };
+
+    const handleSavePack = async (id: string) => {
+        const size = Number(packSize);
+        if (!packUnit.trim() || !size || size <= 0) return;
+        setSavingPack(true);
+        try {
+            await updateShoppingConcept(id, { pack_size: size, pack_unit: packUnit.trim() });
+            setEditingPackId(null);
+        } catch (err: any) {
+            alert(err.message || 'No se pudo guardar el formato de paquete.');
+        } finally {
+            setSavingPack(false);
+        }
+    };
+
+    const handleClearPack = async (id: string) => {
+        setSavingPack(true);
+        try {
+            await updateShoppingConcept(id, { pack_size: null, pack_unit: null });
+            setEditingPackId(null);
+        } catch (err: any) {
+            alert(err.message || 'No se pudo quitar el formato de paquete.');
+        } finally {
+            setSavingPack(false);
+        }
     };
 
     return (
@@ -240,16 +276,68 @@ export const HouseholdSettings = () => {
                     </button>
                 </form>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <p className="text-[10px] text-text-dim font-bold uppercase tracking-widest opacity-60 -mt-4">
+                    Define un formato de paquete (ej: 1 paquete = 6 lonchas) para que la lista de la compra sume las cantidades de tus recetas y calcule cuántos paquetes comprar.
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     {shoppingConcepts.map(concept => (
-                        <div key={concept.id} className="group flex items-center justify-between p-4 bg-foreground/5 border border-foreground/10 rounded-2xl hover:border-primary/30 transition-all">
-                            <span className="text-xs font-bold truncate pr-2 uppercase tracking-tighter">{concept.name}</span>
-                            <button
-                                onClick={() => deleteShoppingConcept(concept.id)}
-                                className="p-2 text-text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        <div key={concept.id} className="group p-4 bg-foreground/5 border border-foreground/10 rounded-2xl hover:border-primary/30 transition-all space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold truncate pr-2 uppercase tracking-tighter">{concept.name}</span>
+                                <button
+                                    onClick={() => deleteShoppingConcept(concept.id)}
+                                    className="p-1 text-text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            {editingPackId === concept.id ? (
+                                <div className="space-y-1.5">
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="number" min="1" step="1"
+                                            value={packSize}
+                                            onChange={e => setPackSize(e.target.value)}
+                                            placeholder="6"
+                                            className="w-14 bg-background border border-foreground/10 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:border-primary text-center"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={packUnit}
+                                            onChange={e => setPackUnit(e.target.value)}
+                                            placeholder="lonchas"
+                                            className="flex-1 min-w-0 bg-background border border-foreground/10 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <button
+                                            disabled={savingPack}
+                                            onClick={() => handleSavePack(concept.id)}
+                                            className="flex-1 bg-primary text-white rounded-lg py-1 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                                        >
+                                            Guardar
+                                        </button>
+                                        <button onClick={() => setEditingPackId(null)} className="px-2 text-text-dim text-[9px] font-black uppercase tracking-widest">
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                    {concept.pack_unit && (
+                                        <button onClick={() => handleClearPack(concept.id)} className="w-full text-red-500/70 hover:text-red-500 text-[9px] font-bold uppercase tracking-widest">
+                                            Quitar formato
+                                        </button>
+                                    )}
+                                </div>
+                            ) : concept.pack_size && concept.pack_unit ? (
+                                <button onClick={() => startEditPack(concept)} className="block w-full text-left text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 truncate">
+                                    1 paquete = {concept.pack_size} {concept.pack_unit}
+                                </button>
+                            ) : (
+                                <button onClick={() => startEditPack(concept)} className="text-[9px] font-bold text-text-dim opacity-60 hover:opacity-100 uppercase tracking-widest transition-all">
+                                    + Definir paquete
+                                </button>
+                            )}
                         </div>
                     ))}
                     {shoppingConcepts.length === 0 && (

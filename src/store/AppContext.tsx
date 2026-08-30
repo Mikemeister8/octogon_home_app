@@ -74,6 +74,7 @@ interface AppState {
     shoppingConcepts: ShoppingConcept[];
     addShoppingConcept: (name: string) => Promise<void>;
     deleteShoppingConcept: (id: string) => Promise<void>;
+    updateShoppingConcept: (id: string, updates: { pack_size?: number | null; pack_unit?: string | null }) => Promise<void>;
 
     // Invitations
     validateInviteCode: (code: string) => Promise<{ householdId: string; householdName: string } | null>;
@@ -764,19 +765,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         // Same ingredient name + same unit -> one summed row (2 latas + 1 lata
         // -> 3 latas); same name but a different unit stays a separate row
-        // (3 latas de atún and 200 g de atún don't merge).
+        // (3 latas de atún and 200 g de atún don't merge) — UNLESS that unit
+        // is a concept's defined sub-unit (e.g. jamón measured in "lonchas"),
+        // in which case the summed sub-unit total is converted to whole
+        // packages (rounded up — you can't buy 2.3 paquetes) before being
+        // merged into the shopping list as "paquete".
         exportMenuToShopping: async (menuId) => {
             if (!homeSettings || !currentUser) return;
             const menu = menus.find(m => m.id === menuId);
             if (!menu) return;
             const allIngredients = menu.blocks.flatMap(b => b.ingredients);
-            const groups = new Map<string, { name: string; unit: string; quantity: number }>();
+
+            const rawGroups = new Map<string, { name: string; unit: string; quantity: number }>();
             allIngredients.forEach(ing => {
-                const key = `${ing.name.trim().toLowerCase()}__${ing.unit}`;
-                const g = groups.get(key);
+                const key = `${ing.name.trim().toLowerCase()}__${ing.unit.trim().toLowerCase()}`;
+                const g = rawGroups.get(key);
                 if (g) g.quantity += Number(ing.quantity);
-                else groups.set(key, { name: ing.name.trim(), unit: ing.unit, quantity: Number(ing.quantity) });
+                else rawGroups.set(key, { name: ing.name.trim(), unit: ing.unit.trim(), quantity: Number(ing.quantity) });
             });
+
+            const groups = new Map<string, { name: string; unit: string; quantity: number }>();
+            rawGroups.forEach(g => {
+                const concept = shoppingConcepts.find(c => c.name.toLowerCase() === g.name.toLowerCase());
+                const isSubUnit = !!concept?.pack_size && !!concept?.pack_unit
+                    && concept.pack_unit.trim().toLowerCase() === g.unit.toLowerCase();
+                const unit = isSubUnit ? 'paquete' : g.unit;
+                const quantity = isSubUnit ? Math.ceil(g.quantity / concept!.pack_size!) : g.quantity;
+                const key = `${g.name.toLowerCase()}__${unit.toLowerCase()}`;
+                const existing = groups.get(key);
+                if (existing) existing.quantity += quantity;
+                else groups.set(key, { name: g.name, unit, quantity });
+            });
+
             const rows = Array.from(groups.values()).map(({ name, unit, quantity }) => ({
                 name: name.charAt(0).toUpperCase() + name.slice(1),
                 quantity, unit,
@@ -791,17 +811,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // ── Recipe bank ────────────────────────────────────────────────────────
         addRecipe: async (title, description, ingredients) => {
-            if (!homeSettings) return;
+            // Throws on failure instead of silently returning — a caller
+            // that only awaits this and then shows "¡Receta guardada!"
+            // unconditionally would otherwise lie to the user on a failed
+            // insert (e.g. a dropped request), which is exactly what
+            // happened here: the alert always fired even when nothing was
+            // ever written to the database.
+            if (!homeSettings) throw new Error('No se pudo guardar: hogar no cargado todavía.');
             const { data: recipeData, error: recipeErr } = await supabase.from('recipes')
                 .insert({ household_id: homeSettings.id, title, description: description || null }).select().single();
-            if (recipeErr || !recipeData) { console.error('[addRecipe] failed:', recipeErr?.message); return; }
+            if (recipeErr || !recipeData) throw new Error(recipeErr?.message || 'No se pudo guardar la receta.');
 
             let ingredientRows: any[] = [];
             if (ingredients.length > 0) {
                 const { data: insData, error: insErr } = await supabase.from('recipe_ingredients')
                     .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
                     .select();
-                if (insErr) { console.error('[addRecipe] ingredients failed:', insErr.message); return; }
+                if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                 ingredientRows = insData || [];
             }
 
@@ -823,6 +849,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { error } = await supabase.from('shopping_database').delete().eq('id', id);
             if (error) { console.error('[deleteShoppingConcept] failed:', error.message); return; }
             setShoppingConcepts(prev => prev.filter(x => x.id !== id));
+        },
+        updateShoppingConcept: async (id, updates) => {
+            const { data, error } = await supabase.from('shopping_database').update(updates).eq('id', id).select().single();
+            if (error || !data) throw new Error(error?.message || 'No se pudo guardar el formato de paquete.');
+            setShoppingConcepts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
         },
 
         // ── Logout ─────────────────────────────────────────────────────────────

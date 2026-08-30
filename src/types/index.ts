@@ -80,7 +80,10 @@ export interface MealIngredient {
     id?: string;
     name: string;
     quantity: number;
-    unit: ShoppingUnit;
+    // A fixed unit (SHOPPING_UNITS) or a food's own custom sub-unit (e.g.
+    // "lonchas") defined on its ShoppingConcept.pack_unit — free text so
+    // packaging conversion isn't limited to the closed unit set.
+    unit: string;
 }
 
 export interface MealBlock {
@@ -116,6 +119,12 @@ export interface ShoppingConcept {
     id: string;
     name: string;
     category?: string;
+    // Packaging conversion: 1 pack_unit "package" contains pack_size of the
+    // concept's sub-unit (e.g. pack_size=6, pack_unit="lonchas" for jamón).
+    // When exporting a menu, sub-unit quantities are summed then converted
+    // to whole packages (rounded up). Null on either = no conversion.
+    pack_size?: number | null;
+    pack_unit?: string | null;
 }
 
 // Pending action stored in localStorage during signup
