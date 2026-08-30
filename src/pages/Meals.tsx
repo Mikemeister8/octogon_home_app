@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import {
     Utensils, Plus, ChefHat, ShoppingBasket, Loader2, Save, X, Trash2,
-    ArrowLeft, BookOpen, Star, CheckCircle2, PlayCircle,
+    ArrowLeft, BookOpen, Star, CheckCircle2, PlayCircle, GripVertical,
 } from 'lucide-react';
-import type { MealIngredient, Recipe, ShoppingConcept } from '../types';
+import {
+    DndContext, pointerWithin, PointerSensor, useSensor, useSensors,
+    useDraggable, useDroppable, type DragEndEvent,
+} from '@dnd-kit/core';
+import type { MealIngredient, MealBlock, Recipe, ShoppingConcept } from '../types';
 import { SHOPPING_UNITS } from '../types';
 
 const defaultDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -38,6 +42,13 @@ export const Meals = () => {
     const [savingBlock, setSavingBlock] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [savingRecipe, setSavingRecipe] = useState(false);
+    const [movingCell, setMovingCell] = useState(false);
+
+    const sensors = useSensors(
+        // Same rationale as Tasks.tsx: a small activation distance so a plain
+        // tap to open the edit modal is never mistaken for a drag.
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    );
 
     if (!homeSettings) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
@@ -212,6 +223,38 @@ export const Meals = () => {
         setEditingCell(null);
     };
 
+    // Drag a filled cell onto another cell: dropping on an empty cell moves
+    // it there; dropping on another filled cell swaps the two. Both cases
+    // reuse saveMenuBlock's upsert-by-(day,slot) — it already replaces
+    // whatever's at a position wholesale, so "swap" is just writing each
+    // block's content into the other's position.
+    const handleGridDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id || movingCell) return;
+        const [fromDay, fromSlot] = String(active.id).split('::');
+        const [toDay, toSlot] = String(over.id).split('::');
+        const sourceBlock = getBlock(fromDay, fromSlot);
+        if (!sourceBlock) return;
+        const targetBlock = getBlock(toDay, toSlot);
+
+        setMovingCell(true);
+        (async () => {
+            try {
+                if (targetBlock) {
+                    await Promise.all([
+                        saveMenuBlock(openMenu.id, { day: toDay, slot: toSlot, title: sourceBlock.title, description: sourceBlock.description, ingredients: sourceBlock.ingredients }),
+                        saveMenuBlock(openMenu.id, { day: fromDay, slot: fromSlot, title: targetBlock.title, description: targetBlock.description, ingredients: targetBlock.ingredients }),
+                    ]);
+                } else {
+                    await saveMenuBlock(openMenu.id, { day: toDay, slot: toSlot, title: sourceBlock.title, description: sourceBlock.description, ingredients: sourceBlock.ingredients });
+                    await deleteMenuBlock(sourceBlock.id);
+                }
+            } finally {
+                setMovingCell(false);
+            }
+        })();
+    };
+
     const handleIngQueryChange = (q: string) => {
         setIngredientQuery(q);
         if (q.trim().length > 1) {
@@ -312,41 +355,32 @@ export const Meals = () => {
             </header>
 
             <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead>
-                        <tr>
-                            <th className="p-4 border border-foreground/10 bg-foreground/5 text-text-dim font-black text-xs uppercase text-center w-28">Horario</th>
-                            {defaultDays.map(day => (
-                                <th key={day} className="p-4 border border-foreground/10 bg-panel text-primary font-black text-xs uppercase text-center min-w-[120px]">
-                                    {day}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {defaultSlots.map(slot => (
-                            <tr key={slot}>
-                                <td className="p-4 border border-foreground/10 bg-foreground/5 text-text-dim font-bold text-xs uppercase text-center align-middle">
-                                    {slot}
-                                </td>
-                                {defaultDays.map(day => {
-                                    const block = getBlock(day, slot);
-                                    return (
-                                        <td key={day} className="p-2 border border-foreground/10 bg-panel hover:bg-foreground/5 transition-colors cursor-pointer align-top" onClick={() => openCell(day, slot)}>
-                                            <div className="min-h-[60px] flex items-center justify-center p-2 rounded-lg text-center">
-                                                {block ? (
-                                                    <span className="text-sm font-black text-foreground">{block.title}</span>
-                                                ) : (
-                                                    <Plus className="w-4 h-4 text-text-dim opacity-30" />
-                                                )}
-                                            </div>
-                                        </td>
-                                    );
-                                })}
+                <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleGridDragEnd}>
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr>
+                                <th className="p-4 border border-foreground/10 bg-foreground/5 text-text-dim font-black text-xs uppercase text-center w-28">Horario</th>
+                                {defaultDays.map(day => (
+                                    <th key={day} className="p-4 border border-foreground/10 bg-panel text-primary font-black text-xs uppercase text-center min-w-[120px]">
+                                        {day}
+                                    </th>
+                                ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {defaultSlots.map(slot => (
+                                <tr key={slot}>
+                                    <td className="p-4 border border-foreground/10 bg-foreground/5 text-text-dim font-bold text-xs uppercase text-center align-middle">
+                                        {slot}
+                                    </td>
+                                    {defaultDays.map(day => (
+                                        <MealCell key={day} day={day} slot={slot} block={getBlock(day, slot)} onOpen={() => openCell(day, slot)} />
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </DndContext>
             </div>
 
             {/* Modal para Editar/Crear Comida */}
@@ -518,5 +552,52 @@ export const Meals = () => {
                 </div>
             )}
         </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One grid cell — always a drop target (so an empty slot can receive a
+// dragged meal); draggable only when it holds a meal, and only from its grip
+// handle, so the rest of the cell keeps opening the edit modal on tap and the
+// table's horizontal scroll on mobile isn't hijacked by a drag started from
+// blank cell space.
+// ─────────────────────────────────────────────────────────────────────────────
+const MealCell = ({ day, slot, block, onOpen }: { day: string; slot: string; block?: MealBlock; onOpen: () => void }) => {
+    const cellId = `${day}::${slot}`;
+    const { setNodeRef: setDropRef, isOver } = useDroppable({ id: cellId });
+    const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: cellId, disabled: !block });
+
+    const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 } : undefined;
+
+    return (
+        <td
+            ref={setDropRef}
+            onClick={onOpen}
+            className={`p-2 border border-foreground/10 bg-panel hover:bg-foreground/5 transition-colors cursor-pointer align-top ${isOver ? 'bg-primary/10 ring-2 ring-inset ring-primary/40' : ''}`}
+        >
+            <div
+                ref={setDragRef}
+                style={style}
+                className={`min-h-[60px] flex items-center justify-center gap-1.5 p-2 rounded-lg text-center relative ${isDragging ? 'opacity-40' : ''}`}
+            >
+                {block ? (
+                    <>
+                        <button
+                            {...attributes}
+                            {...listeners}
+                            onClick={e => e.stopPropagation()}
+                            className="absolute top-0.5 left-0.5 p-1 rounded text-text-dim/30 hover:text-primary hover:bg-primary/10 active:scale-90 transition-all cursor-grab active:cursor-grabbing touch-none"
+                            aria-label="Arrastrar para mover o intercambiar"
+                            title="Arrastrar para mover o intercambiar"
+                        >
+                            <GripVertical className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-sm font-black text-foreground">{block.title}</span>
+                    </>
+                ) : (
+                    <Plus className="w-4 h-4 text-text-dim opacity-30" />
+                )}
+            </div>
+        </td>
     );
 };
