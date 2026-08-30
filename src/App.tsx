@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, LayoutDashboard, ChevronRight, Utensils, Loader2, RefreshCw } from 'lucide-react';
+import { Home, ListTodo, Trophy, Calendar, ShoppingCart, Settings as SettingsIcon, LogOut, ChevronRight, Utensils, Loader2, RefreshCw } from 'lucide-react';
 import { Home as HomePage } from './pages/Home';
 import { Tasks } from './pages/Tasks';
 import { Competition } from './pages/Competition';
@@ -8,7 +8,6 @@ import { Shopping } from './pages/Shopping';
 import { SettingsHub } from './pages/SettingsHub';
 import { ProfileSettings } from './pages/ProfileSettings';
 import { HouseholdSettings } from './pages/HouseholdSettings';
-import { Dashboards } from './pages/Dashboards';
 import { Auth } from './pages/Auth';
 import { CompleteSetup } from './pages/CompleteSetup';
 import { JoinHousehold } from './pages/JoinHousehold';
@@ -40,7 +39,6 @@ const Sidebar = () => {
     { path: '/competition', icon: Trophy, label: 'Ranking' },
     { path: '/reminders', icon: Calendar, label: 'Agenda' },
     { path: '/shopping', icon: ShoppingCart, label: 'Compra' },
-    { path: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' },
     { path: '/meals', icon: Utensils, label: 'Menú' },
     { path: '/settings', icon: SettingsIcon, label: 'Ajustes' },
   ];
@@ -281,7 +279,8 @@ const AppContent = () => {
           <Route path="/competition" element={<Competition />} />
           <Route path="/reminders" element={<Reminders />} />
           <Route path="/shopping" element={<Shopping />} />
-          <Route path="/dashboards" element={<Dashboards />} />
+          {/* Dashboards moved into Ranking's own "Dashboards" tab — redirect any old link/bookmark */}
+          <Route path="/dashboards" element={<Navigate to="/competition" replace />} />
           <Route path="/meals" element={<Meals />} />
           <Route path="/settings" element={<SettingsHub />} />
           <Route path="/settings/profile" element={<ProfileSettings />} />

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { calculateRankings } from '../utils/ranking';
-import { Trophy, Award, Flame, Medal, Star, Loader2, Calendar, History, Crown } from 'lucide-react';
+import { Trophy, Award, Flame, Medal, Star, Loader2, Calendar, History, Crown, PieChart as PieChartIcon } from 'lucide-react';
+import { PieChart as RePie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-type RankingView = 'current' | 'previous' | 'champions' | 'alltime';
+type RankingView = 'current' | 'previous' | 'champions' | 'alltime' | 'dashboards';
+type DashScope = 'month' | 'global';
 
 export const Competition = () => {
     const { users, tasks, completions, tokenName, currentUser, homeSettings } = useAppContext();
@@ -48,13 +50,23 @@ export const Competition = () => {
     })).sort((a, b) => b.points - a.points);
 
     const [selectedPrevMonth, setSelectedPrevMonth] = useState(0);
+    const [dashScope, setDashScope] = useState<DashScope>('month');
 
     const tabs = [
         { key: 'current' as RankingView, label: 'Este Mes', icon: Flame },
         { key: 'previous' as RankingView, label: 'Anteriores', icon: Calendar },
         { key: 'champions' as RankingView, label: 'Campeones', icon: Crown },
         { key: 'alltime' as RankingView, label: 'Histórico', icon: History },
+        { key: 'dashboards' as RankingView, label: 'Dashboards', icon: PieChartIcon },
     ];
+
+    // Dashboards: how many times each member did each task, this month or ever.
+    const dashCompletions = dashScope === 'month'
+        ? completions.filter(c => {
+            const d = new Date(c.completed_at);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        })
+        : completions;
 
     const RankingList = ({ rankings }: { rankings: ReturnType<typeof calculateRankings> }) => (
         <div className="space-y-4">
@@ -207,6 +219,96 @@ export const Competition = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Dashboards: per-task donut, colored by member, month vs all-time */}
+            {view === 'dashboards' && (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <h2 className="text-2xl font-black uppercase italic tracking-tight">
+                            <PieChartIcon className="w-6 h-6 text-primary inline mr-2" />
+                            Veces por Tarea
+                        </h2>
+                        <div className="flex bg-foreground/5 p-1.5 rounded-2xl border border-foreground/10">
+                            {(['month', 'global'] as DashScope[]).map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => setDashScope(s)}
+                                    className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${dashScope === s ? 'bg-primary text-white shadow-lg' : 'text-text-dim hover:text-foreground'}`}
+                                >
+                                    {s === 'month' ? 'Este Mes' : 'Global'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {tasks.map(task => {
+                            const taskCompletions = dashCompletions.filter(c => c.task_id === task.id);
+                            const data = users.map(u => ({
+                                name: u.full_name,
+                                value: taskCompletions.filter(c => c.user_id === u.id).length,
+                                color: u.color_hex,
+                            })).filter(d => d.value > 0);
+
+                            return (
+                                <div key={task.id} className="bg-panel border border-foreground/10 rounded-3xl p-6 shadow-xl flex flex-col items-center">
+                                    <h3 className="text-base font-black text-foreground mb-1 tracking-tight uppercase italic text-center">{task.title}</h3>
+                                    <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-4 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                                        {taskCompletions.length} {taskCompletions.length === 1 ? 'vez' : 'veces'}
+                                    </p>
+
+                                    {data.length > 0 ? (
+                                        <>
+                                            <div className="w-full h-48 relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <RePie>
+                                                        <Pie data={data} innerRadius={50} outerRadius={70} paddingAngle={6} dataKey="value" stroke="none">
+                                                            {data.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip
+                                                            contentStyle={{ backgroundColor: '#1F1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', color: '#fff' }}
+                                                            itemStyle={{ color: '#00FF88', fontWeight: 'bold' }}
+                                                        />
+                                                    </RePie>
+                                                </ResponsiveContainer>
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    <div className="text-center">
+                                                        <p className="text-xl font-black text-foreground leading-none">{taskCompletions.length}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full space-y-2 mt-3">
+                                                {data.map(d => (
+                                                    <div key={d.name} className="flex items-center justify-between bg-foreground/5 p-2.5 rounded-xl border border-foreground/5">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                                                            <span className="text-xs font-black uppercase text-text-dim truncate">{d.name}</span>
+                                                        </div>
+                                                        <span className="text-sm font-black text-foreground shrink-0">{d.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="h-48 flex flex-col items-center justify-center gap-3 opacity-30">
+                                            <PieChartIcon className="w-10 h-10" />
+                                            <p className="text-[9px] font-bold uppercase tracking-widest">Sin datos {dashScope === 'month' ? 'este mes' : ''}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {tasks.length === 0 && (
+                            <div className="col-span-full p-20 text-center bg-foreground/5 rounded-[3rem] border border-dashed border-foreground/10">
+                                <PieChartIcon className="w-16 h-16 text-text-dim/10 mx-auto mb-4" />
+                                <p className="text-text-dim font-black uppercase tracking-widest">No hay tareas todavía</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
