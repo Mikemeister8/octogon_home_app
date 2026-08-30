@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import type {
     Task, TaskCompletion, User, HomeSettings, Reminder,
     ShoppingItem, Menu, MealBlock, MealIngredient, Recipe,
@@ -160,6 +160,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
     const [setupError, setSetupError] = useState<string | null>(null);
 
+    // Circuit breaker for loadHouseholdData: whatever ends up calling it
+    // repeatedly — a flaky realtime reconnect storm, an unexpected retry
+    // path — this makes sure only one load is ever in flight and caps how
+    // often a new one can start, so a bug elsewhere can no longer turn into
+    // hundreds of requests/second against the database.
+    const loadInFlightRef = useRef(false);
+    const lastLoadAtRef = useRef(0);
+    const MIN_LOAD_INTERVAL_MS = 3000;
+
     // Cache persistence
     useEffect(() => { if (currentUser) localStorage.setItem('octo_cache_user', JSON.stringify(currentUser)); else localStorage.removeItem('octo_cache_user'); }, [currentUser]);
     useEffect(() => { if (homeSettings) localStorage.setItem('octo_cache_settings', JSON.stringify(homeSettings)); else localStorage.removeItem('octo_cache_settings'); }, [homeSettings]);
@@ -180,6 +189,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // needs householdId, which we already have — so they all fire in one round
     // trip instead of the five sequential ones this used to take.
     const loadHouseholdData = async (householdId: string) => {
+        if (loadInFlightRef.current) return;
+        const now = Date.now();
+        if (now - lastLoadAtRef.current < MIN_LOAD_INTERVAL_MS) return;
+        loadInFlightRef.current = true;
+        lastLoadAtRef.current = now;
+        try {
+            await loadHouseholdDataInner(householdId);
+        } finally {
+            loadInFlightRef.current = false;
+        }
+    };
+
+    const loadHouseholdDataInner = async (householdId: string) => {
         const [hRes, invRes, membershipsRes, tasksRes, remsRes, shopsRes, dbRes, menusRes, recipesRes] = await Promise.all([
             supabase.from('households').select('*').eq('id', householdId).single(),
             supabase.from('invitations').select('code').eq('household_id', householdId)
