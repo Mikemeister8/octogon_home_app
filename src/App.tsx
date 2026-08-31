@@ -67,7 +67,7 @@ const Sidebar = () => {
           ) : (
             <h2 className="text-2xl font-black tracking-tight truncate" style={{ color: homeSettings?.themeColor || '#00FF88' }}>{homeSettings?.name || 'Hogar'}</h2>
           )}
-          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase block">OCTOGON HOME APP • v2.0.5</span>
+          <span className="text-[10px] font-black opacity-30 tracking-[0.3em] uppercase block">OCTOGON HOME APP • v2.0.0</span>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-foreground truncate uppercase tracking-tight">{currentUser.full_name}</p>
-            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">OCTOGON HOME APP v2.0.5</p>
+            <p className="text-[10px] font-bold text-text-dim uppercase tracking-tighter italic">OCTOGON HOME APP v2.0.0</p>
           </div>
         </div>
 
