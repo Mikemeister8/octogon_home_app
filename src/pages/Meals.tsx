@@ -267,15 +267,21 @@ export const Meals = () => {
         }
     };
 
-    const addIngredient = async (name: string, unitOverride?: string) => {
+    // Adds to the visible list immediately — it used to await the food
+    // database sync first, so a slow or wedged connection made it look like
+    // "I clicked add and nothing happened, I can't add more ingredients."
+    // The food database sync now happens in the background; the ingredient
+    // is already on the plate regardless of how long (or whether) that
+    // finishes.
+    const addIngredient = (name: string, unitOverride?: string) => {
         if (!name.trim()) return;
-        const exists = shoppingConcepts.some(c => normalizeName(c.name) === normalizeName(name));
-        if (!exists) await addShoppingConcept(name.trim());
-
         setEditIngredients(prev => [...prev, { name: name.trim(), quantity: ingredientQty, unit: unitOverride || ingredientUnit }]);
         setIngredientQuery('');
         setIngredientQty(1);
         setIngredientSuggestions([]);
+
+        const exists = shoppingConcepts.some(c => normalizeName(c.name) === normalizeName(name));
+        if (!exists) addShoppingConcept(name.trim());
     };
 
     // Picking a suggestion for a food that has a defined package sub-unit

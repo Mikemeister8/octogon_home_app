@@ -113,7 +113,7 @@ export const AppContext = createContext<AppState | null>(null);
 // life: every later auth/data call queues behind it and hangs forever, with
 // no userland API to clear it. The only guaranteed escape is a full reload,
 // which builds a fresh client with a fresh mutex.
-const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> =>
+const withTimeout = <T,>(promise: PromiseLike<T>, ms = 6000): Promise<T> =>
     new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
         promise.then(
@@ -791,22 +791,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // before removing the OLD ones (rather than delete-then-insert):
             // if the insert fails, the block's existing ingredients are
             // still there instead of having just been wiped out first.
-            const { data: blockData, error: blockErr } = await withNetworkRetry(() =>
+            const { data: blockData, error: blockErr } = await withNetworkRetry(() => withTimeout(
                 supabase.from('menu_blocks')
                     .upsert(
                         { menu_id: menuId, day: block.day, slot: block.slot, title: block.title, description: block.description || null },
                         { onConflict: 'menu_id,day,slot' }
-                    ).select().single()
-            );
+                    ).select().single(),
+                10000
+            ));
             if (blockErr || !blockData) throw new Error(blockErr?.message || 'No se pudo guardar el plato.');
 
             let ingredientRows: any[] = [];
             if (block.ingredients.length > 0) {
-                const { data: insData, error: insErr } = await withNetworkRetry(() =>
+                const { data: insData, error: insErr } = await withNetworkRetry(() => withTimeout(
                     supabase.from('menu_ingredients')
                         .insert(block.ingredients.map(i => ({ block_id: blockData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
-                        .select()
-                );
+                        .select(),
+                    10000
+                ));
                 if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                 ingredientRows = insData || [];
             }
@@ -886,20 +888,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // happened here: the alert always fired even when nothing was
             // ever written to the database.
             if (!homeSettings) throw new Error('No se pudo guardar: hogar no cargado todavía.');
-            const { data: recipeData, error: recipeErr } = await withNetworkRetry(() =>
+            const { data: recipeData, error: recipeErr } = await withNetworkRetry(() => withTimeout(
                 supabase.from('recipes')
-                    .insert({ household_id: homeSettings.id, title, description: description || null }).select().single()
-            );
+                    .insert({ household_id: homeSettings.id, title, description: description || null }).select().single(),
+                10000
+            ));
             if (recipeErr || !recipeData) throw new Error(recipeErr?.message || 'No se pudo guardar la receta.');
 
             let ingredientRows: any[] = [];
             if (ingredients.length > 0) {
                 try {
-                    const { data: insData, error: insErr } = await withNetworkRetry(() =>
+                    const { data: insData, error: insErr } = await withNetworkRetry(() => withTimeout(
                         supabase.from('recipe_ingredients')
                             .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
-                            .select()
-                    );
+                            .select(),
+                        10000
+                    ));
                     if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                     ingredientRows = insData || [];
                 } catch (err) {

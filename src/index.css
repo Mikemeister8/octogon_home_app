@@ -11,6 +11,12 @@
     --color-accent: #FF5D00;
     --color-text: #ffffff;
     --color-text-dim: rgba(0, 255, 136, 0.5);
+    /* Without this, the browser has no idea the page is dark and renders
+       native form-control chrome — a <select>'s own dropdown popup, in
+       particular — with its light-mode default (white background), while
+       our own CSS below forces white text into it: invisible white-on-white
+       options. This tells native controls which palette to match. */
+    color-scheme: dark;
   }
 
   .theme-cyber {
@@ -23,6 +29,7 @@
     /* Amarillo */
     --color-text: #ffffff;
     --color-text-dim: #9ca3af;
+    color-scheme: dark;
   }
 
   .theme-light {
@@ -32,6 +39,7 @@
     --color-accent: #3b82f6;
     --color-text: #0f172a;
     --color-text-dim: #64748b;
+    color-scheme: light;
   }
 
   .theme-octogon {
@@ -41,6 +49,7 @@
     --color-accent: #ec4899;
     --color-text: #ffffff;
     --color-text-dim: #9ca3af;
+    color-scheme: dark;
   }
 
   html,
