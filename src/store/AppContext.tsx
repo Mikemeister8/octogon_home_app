@@ -122,6 +122,28 @@ const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> =>
         );
     });
 
+// A "TypeError: Failed to fetch" means the browser's fetch() call itself
+// never got a response — a dropped mobile connection switching towers, wifi
+// hand-off, DNS hiccup — as opposed to a Postgres/RLS error, which comes
+// back as a normal {error} result instead of a thrown exception. In that
+// specific case the request essentially never reached the server, so
+// retrying once can't create a duplicate row the way blindly retrying any
+// failure could. This is what turned two separate real incidents (a recipe
+// saved without its ingredients, a meal plan cell losing its ingredients)
+// into a single retry instead of a user-visible failure.
+const isNetworkFailure = (err: unknown): boolean =>
+    err instanceof TypeError || (err instanceof Error && err.message === 'Failed to fetch');
+
+const withNetworkRetry = async <T,>(fn: () => PromiseLike<T>): Promise<T> => {
+    try {
+        return await fn();
+    } catch (err) {
+        if (!isNetworkFailure(err)) throw err;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return await fn();
+    }
+};
+
 const hardReset = () => {
     localStorage.clear();
     // ?mode=login tells Auth.tsx to open straight on the login screen — someone
@@ -762,22 +784,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Upserts on (menu_id, day, slot) and replaces that block's ingredients
         // wholesale — simpler and just as correct as diffing a handful of rows.
         saveMenuBlock: async (menuId, block) => {
-            const { data: blockData, error: blockErr } = await supabase.from('menu_blocks')
-                .upsert(
-                    { menu_id: menuId, day: block.day, slot: block.slot, title: block.title, description: block.description || null },
-                    { onConflict: 'menu_id,day,slot' }
-                ).select().single();
-            if (blockErr || !blockData) { console.error('[saveMenuBlock] failed:', blockErr?.message); return; }
+            // Throws on failure instead of swallowing it — a caller that
+            // only awaits this and closes the modal on return would
+            // otherwise look successful on a failed save (the same class of
+            // bug fixed for addRecipe). Also inserts the NEW ingredients
+            // before removing the OLD ones (rather than delete-then-insert):
+            // if the insert fails, the block's existing ingredients are
+            // still there instead of having just been wiped out first.
+            const { data: blockData, error: blockErr } = await withNetworkRetry(() =>
+                supabase.from('menu_blocks')
+                    .upsert(
+                        { menu_id: menuId, day: block.day, slot: block.slot, title: block.title, description: block.description || null },
+                        { onConflict: 'menu_id,day,slot' }
+                    ).select().single()
+            );
+            if (blockErr || !blockData) throw new Error(blockErr?.message || 'No se pudo guardar el plato.');
 
-            await supabase.from('menu_ingredients').delete().eq('block_id', blockData.id);
             let ingredientRows: any[] = [];
             if (block.ingredients.length > 0) {
-                const { data: insData, error: insErr } = await supabase.from('menu_ingredients')
-                    .insert(block.ingredients.map(i => ({ block_id: blockData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
-                    .select();
-                if (insErr) { console.error('[saveMenuBlock] ingredients failed:', insErr.message); return; }
+                const { data: insData, error: insErr } = await withNetworkRetry(() =>
+                    supabase.from('menu_ingredients')
+                        .insert(block.ingredients.map(i => ({ block_id: blockData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
+                        .select()
+                );
+                if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                 ingredientRows = insData || [];
             }
+
+            const newIds = ingredientRows.map((i: any) => i.id);
+            const cleanup = supabase.from('menu_ingredients').delete().eq('block_id', blockData.id);
+            const { error: delErr } = await (newIds.length > 0 ? cleanup.not('id', 'in', `(${newIds.join(',')})`) : cleanup);
+            if (delErr) console.error('[saveMenuBlock] cleanup of old ingredients failed:', delErr.message);
 
             const newBlock: MealBlock = {
                 id: blockData.id, menu_id: blockData.menu_id, day: blockData.day, slot: blockData.slot,
@@ -849,24 +886,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // happened here: the alert always fired even when nothing was
             // ever written to the database.
             if (!homeSettings) throw new Error('No se pudo guardar: hogar no cargado todavía.');
-            const { data: recipeData, error: recipeErr } = await supabase.from('recipes')
-                .insert({ household_id: homeSettings.id, title, description: description || null }).select().single();
+            const { data: recipeData, error: recipeErr } = await withNetworkRetry(() =>
+                supabase.from('recipes')
+                    .insert({ household_id: homeSettings.id, title, description: description || null }).select().single()
+            );
             if (recipeErr || !recipeData) throw new Error(recipeErr?.message || 'No se pudo guardar la receta.');
 
             let ingredientRows: any[] = [];
             if (ingredients.length > 0) {
-                const { data: insData, error: insErr } = await supabase.from('recipe_ingredients')
-                    .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
-                    .select();
-                if (insErr) {
+                try {
+                    const { data: insData, error: insErr } = await withNetworkRetry(() =>
+                        supabase.from('recipe_ingredients')
+                            .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
+                            .select()
+                    );
+                    if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
+                    ingredientRows = insData || [];
+                } catch (err) {
                     // Roll back the recipe row itself — a flaky connection
                     // (e.g. mobile network dropping between the two inserts)
                     // must not leave a title-only recipe with none of its
                     // ingredients behind. Either both land or neither does.
                     await supabase.from('recipes').delete().eq('id', recipeData.id);
-                    throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
+                    throw err instanceof Error ? err : new Error('No se pudieron guardar los ingredientes.');
                 }
-                ingredientRows = insData || [];
             }
 
             setRecipes(prev => [...prev, {
