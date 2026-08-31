@@ -857,7 +857,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const { data: insData, error: insErr } = await supabase.from('recipe_ingredients')
                     .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
                     .select();
-                if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
+                if (insErr) {
+                    // Roll back the recipe row itself — a flaky connection
+                    // (e.g. mobile network dropping between the two inserts)
+                    // must not leave a title-only recipe with none of its
+                    // ingredients behind. Either both land or neither does.
+                    await supabase.from('recipes').delete().eq('id', recipeData.id);
+                    throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
+                }
                 ingredientRows = insData || [];
             }
 
