@@ -125,21 +125,28 @@ const withTimeout = <T,>(promise: PromiseLike<T>, ms = 6000): Promise<T> =>
 // A "TypeError: Failed to fetch" means the browser's fetch() call itself
 // never got a response — a dropped mobile connection switching towers, wifi
 // hand-off, DNS hiccup — as opposed to a Postgres/RLS error, which comes
-// back as a normal {error} result instead of a thrown exception. In that
-// specific case the request essentially never reached the server, so
-// retrying once can't create a duplicate row the way blindly retrying any
-// failure could. This is what turned two separate real incidents (a recipe
-// saved without its ingredients, a meal plan cell losing its ingredients)
-// into a single retry instead of a user-visible failure.
-const isNetworkFailure = (err: unknown): boolean =>
-    err instanceof TypeError || (err instanceof Error && err.message === 'Failed to fetch');
+// back as a normal {error} result instead of a thrown exception. A
+// withTimeout "timed out after Xms" is the other retry-worthy case: it
+// means the call — including, critically, the auth mutex described above —
+// never resolved at all within the deadline. Both cases mean the request
+// essentially never reached (or came back from) the server, so retrying
+// can't create a duplicate row the way blindly retrying any failure could.
+// The timeout case in particular is worth retrying rather than just
+// surfacing: Supabase's own internal lock-recovery (the "steal" fallback
+// documented on the auth client) typically clears a wedge within ~5s on its
+// own, well inside a 10s timeout — so by the time the first attempt times
+// out, the wedge has usually already resolved itself, and a fresh attempt
+// right after tends to just work instead of hitting the same wall again.
+const isRetryableFailure = (err: unknown): boolean =>
+    err instanceof TypeError
+    || (err instanceof Error && (err.message === 'Failed to fetch' || err.message.startsWith('timed out after')));
 
 const withNetworkRetry = async <T,>(fn: () => PromiseLike<T>): Promise<T> => {
     try {
         return await fn();
     } catch (err) {
-        if (!isNetworkFailure(err)) throw err;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!isRetryableFailure(err)) throw err;
+        await new Promise(resolve => setTimeout(resolve, 500));
         return await fn();
     }
 };
