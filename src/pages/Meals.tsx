@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import type { MealIngredient, MealBlock, Recipe, ShoppingConcept } from '../types';
 import { SHOPPING_UNITS } from '../types';
+import { normalizeName } from '../utils/text';
 
 const defaultDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const defaultSlots = ['Desayuno', 'Media Mañana', 'Comida', 'Merienda', 'Cena'];
@@ -258,7 +259,7 @@ export const Meals = () => {
     const handleIngQueryChange = (q: string) => {
         setIngredientQuery(q);
         if (q.trim().length > 1) {
-            setIngredientSuggestions(shoppingConcepts.filter(c => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 4));
+            setIngredientSuggestions(shoppingConcepts.filter(c => normalizeName(c.name).includes(normalizeName(q))).slice(0, 4));
         } else {
             setIngredientSuggestions([]);
         }
@@ -266,7 +267,7 @@ export const Meals = () => {
 
     const addIngredient = async (name: string, unitOverride?: string) => {
         if (!name.trim()) return;
-        const exists = shoppingConcepts.some(c => c.name.toLowerCase() === name.toLowerCase());
+        const exists = shoppingConcepts.some(c => normalizeName(c.name) === normalizeName(name));
         if (!exists) await addShoppingConcept(name.trim());
 
         setEditIngredients(prev => [...prev, { name: name.trim(), quantity: ingredientQty, unit: unitOverride || ingredientUnit }]);
