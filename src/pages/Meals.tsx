@@ -213,6 +213,8 @@ export const Meals = () => {
                 title: editTitle.trim(), description: editDescription, ingredients: editIngredients,
             });
             setEditingCell(null);
+        } catch (err: any) {
+            alert(err.message || 'No se pudo guardar el plato. Inténtalo de nuevo.');
         } finally {
             setSavingBlock(false);
         }
