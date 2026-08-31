@@ -3,6 +3,7 @@ import { useAppContext } from '../store/AppContext';
 import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
 import type { ShoppingConcept, ShoppingItem, ShoppingUnit } from '../types';
 import { SHOPPING_UNITS } from '../types';
+import { normalizeName } from '../utils/text';
 
 export const Shopping = () => {
     const {
@@ -20,7 +21,7 @@ export const Shopping = () => {
         setNewItem(e);
         if (e.trim().length > 1) {
             const filtered = shoppingConcepts.filter(c =>
-                c.name.toLowerCase().includes(e.toLowerCase())
+                normalizeName(c.name).includes(normalizeName(e))
             ).slice(0, 5);
             setSuggestions(filtered);
         } else {
@@ -32,7 +33,7 @@ export const Shopping = () => {
         if (!name.trim() || !currentUser) return;
 
         // Check if exists in DB, if not add it
-        const exists = shoppingConcepts.some(c => c.name.toLowerCase() === name.toLowerCase());
+        const exists = shoppingConcepts.some(c => normalizeName(c.name) === normalizeName(name));
         if (!exists) {
             await addShoppingConcept(name.trim());
         }

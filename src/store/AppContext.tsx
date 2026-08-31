@@ -5,6 +5,7 @@ import type {
     ShoppingConcept, AppTheme, PendingAction
 } from '../types';
 import { supabase } from '../lib/supabase';
+import { normalizeName } from '../utils/text';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTEXT INTERFACE
@@ -808,7 +809,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const rawGroups = new Map<string, { name: string; unit: string; quantity: number }>();
             allIngredients.forEach(ing => {
-                const key = `${ing.name.trim().toLowerCase()}__${ing.unit.trim().toLowerCase()}`;
+                const key = `${normalizeName(ing.name)}__${ing.unit.trim().toLowerCase()}`;
                 const g = rawGroups.get(key);
                 if (g) g.quantity += Number(ing.quantity);
                 else rawGroups.set(key, { name: ing.name.trim(), unit: ing.unit.trim(), quantity: Number(ing.quantity) });
@@ -816,12 +817,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const groups = new Map<string, { name: string; unit: string; quantity: number }>();
             rawGroups.forEach(g => {
-                const concept = shoppingConcepts.find(c => c.name.toLowerCase() === g.name.toLowerCase());
+                const concept = shoppingConcepts.find(c => normalizeName(c.name) === normalizeName(g.name));
                 const isSubUnit = !!concept?.pack_size && !!concept?.pack_unit
                     && concept.pack_unit.trim().toLowerCase() === g.unit.toLowerCase();
                 const unit = isSubUnit ? 'paquete' : g.unit;
                 const quantity = isSubUnit ? Math.ceil(g.quantity / concept!.pack_size!) : g.quantity;
-                const key = `${g.name.toLowerCase()}__${unit.toLowerCase()}`;
+                const key = `${normalizeName(g.name)}__${unit.toLowerCase()}`;
                 const existing = groups.get(key);
                 if (existing) existing.quantity += quantity;
                 else groups.set(key, { name: g.name, unit, quantity });
@@ -875,8 +876,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
 
         // ── Shopping concepts ──────────────────────────────────────────────────
+        // Self-guards against near-duplicates (same name, different accent or
+        // case — "Jamón" vs "jamon") so every caller (recipe/menu ingredient
+        // entry, the shopping list's own add form, the food database's manual
+        // add) gets deduping for free instead of each having to check first.
         addShoppingConcept: async (name) => {
             if (!homeSettings) return;
+            if (shoppingConcepts.some(c => normalizeName(c.name) === normalizeName(name))) return;
             const { data, error } = await supabase.from('shopping_database')
                 .insert({ name, household_id: homeSettings.id }).select().single();
             if (data && !error) setShoppingConcepts(prev => [...prev, data]);
