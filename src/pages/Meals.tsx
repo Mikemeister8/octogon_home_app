@@ -284,12 +284,20 @@ export const Meals = () => {
         if (!exists) addShoppingConcept(name.trim());
     };
 
-    // Picking a suggestion for a food that has a defined package sub-unit
-    // (e.g. jamón -> lonchas) switches the unit picker to it, so the user
-    // doesn't have to remember and re-select it every time.
+    // Picking a suggestion only fills in the name (and switches the unit
+    // picker to the food's own sub-unit, e.g. jamón -> lonchas, if it has
+    // one) — it does NOT add the ingredient. That still needs a tap on "+",
+    // so the quantity (and unit, if you want something other than the
+    // default) can be set first instead of adding immediately and having to
+    // fix it after the fact.
     const pickSuggestion = (concept: ShoppingConcept) => {
+        setIngredientQuery(concept.name);
         if (concept.pack_unit) setIngredientUnit(concept.pack_unit);
-        addIngredient(concept.name, concept.pack_unit || undefined);
+        setIngredientSuggestions([]);
+    };
+
+    const updateIngredientField = (idx: number, patch: Partial<MealIngredient>) => {
+        setEditIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, ...patch } : ing));
     };
 
     // Custom sub-units defined across the food database (e.g. "lonchas"),
@@ -451,11 +459,29 @@ export const Meals = () => {
 
                                     <div className="space-y-2">
                                         {editIngredients.map((ing, idx) => (
-                                            <div key={idx} className="flex justify-between items-center bg-foreground/5 px-4 py-2 rounded-lg">
-                                                <span className="font-bold text-sm text-foreground">{ing.quantity} {ing.unit} — {ing.name}</span>
+                                            <div key={idx} className="flex items-center gap-2 bg-foreground/5 px-3 py-2 rounded-lg">
+                                                <input
+                                                    type="number" min="0.5" step="0.5"
+                                                    value={ing.quantity}
+                                                    onChange={e => updateIngredientField(idx, { quantity: Number(e.target.value) })}
+                                                    className="w-14 bg-foreground/10 border border-foreground/10 rounded-lg px-1.5 py-1 text-foreground font-bold text-center text-sm focus:outline-none focus:border-primary shrink-0"
+                                                />
+                                                <select
+                                                    value={ing.unit}
+                                                    onChange={e => updateIngredientField(idx, { unit: e.target.value })}
+                                                    className="bg-foreground/10 border border-foreground/10 rounded-lg px-1.5 py-1 text-foreground font-bold text-sm focus:outline-none focus:border-primary shrink-0"
+                                                >
+                                                    {SHOPPING_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    {customUnits.length > 0 && (
+                                                        <optgroup label="Personalizadas">
+                                                            {customUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                                        </optgroup>
+                                                    )}
+                                                </select>
+                                                <span className="flex-1 min-w-0 font-bold text-sm text-foreground truncate">{ing.name}</span>
                                                 <button
                                                     onClick={() => setEditIngredients(prev => prev.filter((_, i) => i !== idx))}
-                                                    className="p-1.5 text-text-dim hover:text-red-500 rounded-lg hover:bg-red-500/10"
+                                                    className="p-1.5 text-text-dim hover:text-red-500 rounded-lg hover:bg-red-500/10 shrink-0"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
