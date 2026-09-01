@@ -33,6 +33,28 @@ const fetchWithTimeout: typeof fetch = (input, init = {}) => {
 // left at its default. Duplicating it here would just fight the library's
 // own bookkeeping; the actual gap was that a hung request — including that
 // very refresh — never timed out, which fetchWithTimeout above now fixes.)
+//
+// By default (persistSession + a browser with navigator.locks, both true
+// here) GoTrueClient serializes EVERY auth/REST call — not just token
+// refreshes — through a single exclusive browser Web Lock shared across every
+// tab of this app on the same device, to keep concurrent tabs from racing
+// each other's token refresh. Confirmed via Supabase's own edge logs that
+// this was the actual mechanism behind repeated real incidents this session:
+// saves that hung with zero request ever reaching the server (stuck
+// acquiring the lock before fetch is even called, so fetchWithTimeout's
+// AbortController never gets a chance to run), and the earlier runaway
+// request storm. The library's own recovery for a stuck lock ("steal" after
+// lockAcquireTimeout, default 5s) evidently isn't reliably kicking in for
+// this app's traffic pattern.
+// The fix: stop using a shared lock at all. `lock` below just runs the
+// operation directly with no serialization. The one thing this gives up is
+// perfect protection against two tabs of the SAME account on the SAME
+// device refreshing the token at the exact same instant — a rare case whose
+// worst outcome is one extra token refresh, nowhere near as costly as every
+// save silently hanging forever.
+const noOpLock = async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => fn();
+
 export const supabase = createClient(supabaseUrl, supabaseKey, {
     global: { fetch: fetchWithTimeout },
+    auth: { lock: noOpLock },
 });
