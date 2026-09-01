@@ -12,7 +12,12 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 // Storage), so a hang anywhere becomes a normal rejected promise instead —
 // which every call site already knows how to recover from — rather than an
 // unbounded wait with no way out short of reloading the whole app.
-const REQUEST_TIMEOUT_MS = 15000;
+// Exported so any outer timeout wrapped around a Supabase call (AppContext's
+// withTimeout) can be derived from this instead of picking its own number —
+// an outer timeout tighter than this one fires first on a request that was
+// merely slow, not stuck, turning a would-have-succeeded save into an
+// artificial failure. That's a bug on its own, not just lost protection.
+export const REQUEST_TIMEOUT_MS = 15000;
 const fetchWithTimeout: typeof fetch = (input, init = {}) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

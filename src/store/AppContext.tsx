@@ -4,8 +4,24 @@ import type {
     ShoppingItem, Menu, MealBlock, MealIngredient, Recipe,
     ShoppingConcept, AppTheme, PendingAction
 } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, REQUEST_TIMEOUT_MS } from '../lib/supabase';
 import { normalizeName } from '../utils/text';
+
+// Any outer timeout wrapped around a Supabase call must be strictly longer
+// than the fetch layer's own ceiling (REQUEST_TIMEOUT_MS) — otherwise the
+// outer one fires first on a request that was merely slow (a real mobile
+// round trip, not a wedge), cutting it off before it had a chance to
+// succeed. This is exactly what happened with a flat 10000ms here against a
+// 15000ms fetch ceiling: the save timeout could never actually let a
+// legitimately-slow-but-working request finish, on the first attempt or the
+// retry.
+const SAVE_TIMEOUT_MS = REQUEST_TIMEOUT_MS + 3000;
+// fetchUserData runs several stages of Supabase calls one after another
+// (profile+memberships, then households, then the full household load,
+// then members+completions) — bounding the whole sequence needs more
+// headroom than a single save, but still a bounded amount, not "give up
+// only after multiple full fetch-timeout cycles."
+const FETCH_USER_DATA_TIMEOUT_MS = REQUEST_TIMEOUT_MS + 8000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTEXT INTERFACE
@@ -509,7 +525,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (error) throw error;
                 if (session?.user) {
                     handled = true;
-                    await withTimeout(fetchUserData(session.user.id), 10000);
+                    await withTimeout(fetchUserData(session.user.id), FETCH_USER_DATA_TIMEOUT_MS);
                 } else {
                     setLoading(false);
                 }
@@ -626,7 +642,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // timeout instead of hanging the "Reintentar" button forever too.
             try {
                 const { data: { user } } = await withTimeout(supabase.auth.getUser());
-                if (user) await withTimeout(fetchUserData(user.id), 10000);
+                if (user) await withTimeout(fetchUserData(user.id), FETCH_USER_DATA_TIMEOUT_MS);
             } catch (e) {
                 console.error('[retrySetup] auth client stuck, forcing a hard reload:', e);
                 hardReset();
@@ -804,7 +820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         { menu_id: menuId, day: block.day, slot: block.slot, title: block.title, description: block.description || null },
                         { onConflict: 'menu_id,day,slot' }
                     ).select().single(),
-                10000
+                SAVE_TIMEOUT_MS
             ));
             if (blockErr || !blockData) throw new Error(blockErr?.message || 'No se pudo guardar el plato.');
 
@@ -814,7 +830,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     supabase.from('menu_ingredients')
                         .insert(block.ingredients.map(i => ({ block_id: blockData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
                         .select(),
-                    10000
+                    SAVE_TIMEOUT_MS
                 ));
                 if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                 ingredientRows = insData || [];
@@ -898,7 +914,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { data: recipeData, error: recipeErr } = await withNetworkRetry(() => withTimeout(
                 supabase.from('recipes')
                     .insert({ household_id: homeSettings.id, title, description: description || null }).select().single(),
-                10000
+                SAVE_TIMEOUT_MS
             ));
             if (recipeErr || !recipeData) throw new Error(recipeErr?.message || 'No se pudo guardar la receta.');
 
@@ -909,7 +925,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         supabase.from('recipe_ingredients')
                             .insert(ingredients.map(i => ({ recipe_id: recipeData.id, name: i.name, quantity: i.quantity, unit: i.unit })))
                             .select(),
-                        10000
+                        SAVE_TIMEOUT_MS
                     ));
                     if (insErr) throw new Error(insErr.message || 'No se pudieron guardar los ingredientes.');
                     ingredientRows = insData || [];
