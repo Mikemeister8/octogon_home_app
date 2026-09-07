@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2, Calendar } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2, Calendar, Check, Sparkles } from 'lucide-react';
 import type { ShoppingConcept, ShoppingItem, ShoppingUnit } from '../types';
 import { SHOPPING_UNITS } from '../types';
 import { normalizeName } from '../utils/text';
 
 export const Shopping = () => {
     const {
-        shoppingItems, addShoppingItem, updateShoppingItem, deleteShoppingItem,
+        shoppingItems, addShoppingItem, updateShoppingItem, deleteShoppingItem, clearPurchasedItems,
         shoppingConcepts, addShoppingConcept, currentUser, homeSettings
     } = useAppContext();
+    const [clearing, setClearing] = useState(false);
     const [newItem, setNewItem] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [unit, setUnit] = useState<ShoppingUnit>('ud');
@@ -56,6 +57,13 @@ export const Shopping = () => {
     };
 
     const activeItems = shoppingItems.filter(i => !i.is_purchased);
+    const purchasedItems = shoppingItems.filter(i => i.is_purchased);
+
+    const handleClearPurchased = async () => {
+        setClearing(true);
+        try { await clearPurchasedItems(); }
+        finally { setClearing(false); }
+    };
 
     return (
         <div className="p-4 sm:p-8 space-y-8 max-w-4xl mx-auto pb-20">
@@ -140,6 +148,7 @@ export const Shopping = () => {
                             <button
                                 onClick={() => toggleBought(item)}
                                 className="w-8 h-8 rounded-xl border-2 border-primary/20 hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors"
+                                aria-label="Marcar como comprado"
                             >
                                 <div className="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20 transition-opacity" />
                             </button>
@@ -175,6 +184,45 @@ export const Shopping = () => {
                     )}
                 </div>
             </div>
+
+            {purchasedItems.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-4">
+                        <h3 className="text-xs font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
+                            <Check className="w-4 h-4" /> Comprado
+                            <span className="bg-foreground/10 text-text-dim text-[10px] font-black px-3 py-1 rounded-full">{purchasedItems.length}</span>
+                        </h3>
+                        <button
+                            onClick={handleClearPurchased}
+                            disabled={clearing}
+                            className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-red-500/10 border border-foreground/10 hover:border-red-500/30 text-text-dim hover:text-red-500 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
+                        >
+                            {clearing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Limpiar
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                        {purchasedItems.map(item => (
+                            <div key={item.id} className="bg-panel/40 border border-foreground/5 p-4 rounded-2xl flex items-center gap-4 opacity-50 hover:opacity-80 group shadow-sm transition-all">
+                                <button
+                                    onClick={() => toggleBought(item)}
+                                    className="w-8 h-8 rounded-xl border-2 border-primary bg-primary/80 flex items-center justify-center shrink-0 transition-colors"
+                                    aria-label="Desmarcar como comprado"
+                                >
+                                    <Check className="w-4 h-4 text-white" />
+                                </button>
+                                <div className="flex-1 min-w-0 flex items-center gap-3">
+                                    <span className="text-foreground font-black text-lg tracking-tight truncate block w-full line-through">{item.name}</span>
+                                </div>
+                                <span className="min-w-[3rem] text-center font-black text-sm text-text-dim tabular-nums shrink-0">{item.quantity ?? 1} {item.unit || 'ud'}</span>
+                                <button onClick={() => deleteShoppingItem(item.id)} className="p-3 text-text-dim hover:text-red-500 hover:bg-red-500/10 rounded-xl opacity-40 hover:opacity-100 transition-all shrink-0">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="pt-4 flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-text-dim opacity-30">
                 <Calendar className="w-4 h-4" /> Octogon Shopping System v2.0
