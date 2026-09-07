@@ -72,6 +72,7 @@ interface AppState {
     addShoppingItem: (name: string, userId: string, quantity?: number, unit?: string) => Promise<void>;
     updateShoppingItem: (si: ShoppingItem) => Promise<void>;
     deleteShoppingItem: (id: string) => Promise<void>;
+    clearPurchasedItems: () => Promise<void>;
 
     // Menus — shared by the whole household. Exactly one is 'active' (menú
     // en curso) at a time; the rest are 'saved' history you can reactivate.
@@ -765,6 +766,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const { error } = await supabase.from('shopping_items').delete().eq('id', id);
             if (error) { console.error('[deleteShoppingItem] failed:', error.message); return; }
             setShoppingItems(prev => prev.filter(x => x.id !== id));
+        },
+        // "Limpiar" button: wipes every item already ticked off, in one call
+        // instead of one delete per row.
+        clearPurchasedItems: async () => {
+            if (!homeSettings) return;
+            const { error } = await supabase.from('shopping_items')
+                .delete().eq('household_id', homeSettings.id).eq('is_purchased', true);
+            if (error) { console.error('[clearPurchasedItems] failed:', error.message); return; }
+            setShoppingItems(prev => prev.filter(x => !x.is_purchased));
         },
 
         // ── Menus ──────────────────────────────────────────────────────────────
