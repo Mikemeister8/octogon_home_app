@@ -402,7 +402,14 @@ export const Meals = () => {
 
             {/* Modal para Editar/Crear Comida */}
             {editingCell && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+                // z-[60]: the mobile bottom nav is also fixed at z-50 and
+                // rendered later in the DOM (App.tsx renders <MobileNav />
+                // after the page content), so at equal z-index it wins the
+                // stacking tie and sits on top of this modal — covering the
+                // footer's "Guardar Plato" button right where both fixed
+                // elements meet at the bottom of the screen. Needs to
+                // outrank it outright, not just tie.
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60]">
                     <div className="bg-panel border border-foreground/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden">
 
                         {/* Header Modal */}
@@ -420,9 +427,9 @@ export const Meals = () => {
                             </button>
                         </div>
 
-                        <div className="flex flex-1 overflow-hidden">
+                        <div className="flex flex-1 overflow-hidden min-h-0">
                             {/* Panel Izquierdo: Formulario */}
-                            <div className="p-6 flex-1 overflow-y-auto space-y-6 block">
+                            <div className="p-6 flex-1 overflow-y-auto min-h-0 space-y-6 block">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-text-dim uppercase tracking-widest flex justify-between">
                                         Nombre del Plato
@@ -553,7 +560,7 @@ export const Meals = () => {
 
                             {/* Panel Derecho: Recetario (Side panel if active) */}
                             {showRecipeBank && (
-                                <div className="w-1/2 border-l border-foreground/10 bg-panel/50 overflow-y-auto flex flex-col">
+                                <div className="w-1/2 border-l border-foreground/10 bg-panel/50 overflow-y-auto min-h-0 flex flex-col">
                                     <div className="p-4 bg-primary/5 border-b border-primary/20 sticky top-0">
                                         <h3 className="font-black text-primary text-sm uppercase tracking-widest flex items-center gap-2"><BookOpen className="w-4 h-4" /> Recetario del Hogar</h3>
                                         <p className="text-[10px] text-text-dim mt-1 font-bold">Haz click para cargar una receta</p>
